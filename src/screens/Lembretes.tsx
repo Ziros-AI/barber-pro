@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { supabase } from '../api/supabaseClient';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, Check, Clock, Send, Plus } from 'lucide-react-native';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { COLORS } from '../styles/colors';
+import { NovoLembreteModal } from '../components/modals/NovoLembreteModal';
 
 export default function LembretesScreen() {
   const [modalVisible, setModalVisible] = useState(false);
+  const queryClient = useQueryClient();
+  
   const { data: lembretes = [], isLoading } = useQuery({
     queryKey: ['lembretes'],
     queryFn: async () => {
@@ -22,7 +25,41 @@ export default function LembretesScreen() {
     }
   });
 
+  const marcarComoEnviado = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase
+        .from('lembretes' as any)
+        .update({ status: 'enviado' } as any as never)
+        .eq('id', id) as any);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lembretes'] });
+    }
+  });
+
+  const enviarWhatsApp = (lembrete: any) => {
+    const telefone = lembrete.cliente_telefone?.replace(/\D/g, '') || '';
+    const mensagem = encodeURIComponent(lembrete.mensagem || 'Lembrete de agendamento');
+    
+    if (!telefone) {
+      Alert.alert('Erro', 'Telefone não encontrado');
+      return;
+    }
+
+    const url = `https://wa.me/55${telefone}?text=${mensagem}`;
+    
+    Linking.openURL(url).then(() => {
+      marcarComoEnviado.mutate(lembrete.id);
+    }).catch(() => {
+      Alert.alert('Erro', 'Não foi possível abrir o WhatsApp');
+    });
+  };
+
   const pendentes = lembretes.filter((l: any) => l.status === 'pendente');
+  const prontos = pendentes.filter((l: any) => isPast(parseISO(l.data_envio)));
+  const agendados = pendentes.filter((l: any) => !isPast(parseISO(l.data_envio)));
   const enviados = lembretes.filter((l: any) => l.status === 'enviado');
 
   if (isLoading) {
@@ -33,30 +70,35 @@ export default function LembretesScreen() {
     );
   }
 
-  const renderLembrete = (lembrete: any) => {
+  const renderLembrete = (lembrete: any, showButton: boolean = false) => {
     const isPendente = lembrete.status === 'pendente';
+    const isPronto = isPendente && isPast(parseISO(lembrete.data_envio));
     
     return (
       <View 
         key={lembrete.id} 
         style={[
           styles.lembreteCard,
+          isPronto ? styles.lembreteCardPronto : 
           isPendente ? styles.lembreteCardPendente : styles.lembreteCardEnviado
         ]}
       >
         <View style={styles.lembreteHeader}>
           <View style={styles.lembreteInfo}>
             <View style={styles.statusRow}>
-              {isPendente ? (
+              {isPronto ? (
+                <Bell color="#f59e0b" size={20} style={{ marginRight: 8 }} />
+              ) : isPendente ? (
                 <Clock color="#ca8a04" size={20} style={{ marginRight: 8 }} />
               ) : (
                 <Check color="#22c55e" size={20} style={{ marginRight: 8 }} />
               )}
               <Text style={[
                 styles.statusText,
+                isPronto ? styles.statusPronto :
                 isPendente ? styles.statusPendente : styles.statusEnviado
               ]}>
-                {isPendente ? 'PENDENTE' : 'ENVIADO'}
+                {isPronto ? 'PRONTO' : isPendente ? 'AGENDADO' : 'ENVIADO'}
               </Text>
             </View>
             <Text style={styles.clienteNome}>
@@ -78,6 +120,16 @@ export default function LembretesScreen() {
             {format(parseISO(lembrete.data_envio), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
           </Text>
         </View>
+
+        {showButton && isPronto && (
+          <TouchableOpacity
+            style={styles.whatsappButton}
+            onPress={() => enviarWhatsApp(lembrete)}
+          >
+            <Send color={COLORS.white} size={16} />
+            <Text style={styles.whatsappButtonText}>Enviar WhatsApp</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -89,7 +141,7 @@ export default function LembretesScreen() {
           <View>
             <Text style={styles.title}>Lembretes</Text>
             <Text style={styles.subtitle}>
-              {pendentes.length} pendentes • {enviados.length} enviados
+              {prontos.length} prontos • {agendados.length} agendados • {enviados.length} enviados
             </Text>
           </View>
           <TouchableOpacity 
@@ -100,31 +152,50 @@ export default function LembretesScreen() {
           </TouchableOpacity>
         </View>
 
-      <View style={styles.content}>
-        {pendentes.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Pendentes</Text>
-            {pendentes.map(renderLembrete)}
-          </>
-        )}
+        <View style={styles.content}>
+          {prontos.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Bell color="#f59e0b" size={20} />
+                <Text style={styles.sectionTitle}>Prontos para Enviar</Text>
+              </View>
+              {prontos.map(l => renderLembrete(l, true))}
+            </View>
+          )}
 
-        {enviados.length > 0 && (
-          <>
-            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Enviados</Text>
-            {enviados.map(renderLembrete)}
-          </>
-        )}
+          {agendados.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Clock color={COLORS.zinc400} size={20} />
+                <Text style={styles.sectionTitle}>Agendados</Text>
+              </View>
+              {agendados.map(l => renderLembrete(l, false))}
+            </View>
+          )}
 
-        {lembretes.length === 0 && (
-          <View style={styles.emptyState}>
-            <Bell color={COLORS.zinc500} size={48} />
-            <Text style={styles.emptyText}>
-              Nenhum lembrete configurado
-            </Text>
-          </View>
-        )}
-      </View>
-    </ScrollView>
+          {enviados.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Check color="#22c55e" size={20} />
+                <Text style={styles.sectionTitle}>Enviados</Text>
+              </View>
+              {enviados.slice(0, 10).map(l => renderLembrete(l, false))}
+            </View>
+          )}
+
+          {lembretes.length === 0 && (
+            <View style={styles.emptyState}>
+              <Bell color={COLORS.zinc700} size={64} />
+              <Text style={styles.emptyText}>Nenhum lembrete ainda</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      <NovoLembreteModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+      />
     </>
   );
 }
@@ -169,11 +240,19 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
+  section: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
   sectionTitle: {
     color: COLORS.white,
     fontWeight: '700',
     fontSize: 18,
-    marginBottom: 12,
   },
   lembreteCard: {
     borderRadius: 16,
@@ -184,6 +263,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(113, 63, 18, 0.2)',
     borderWidth: 2,
     borderColor: '#ca8a04',
+  },
+  lembreteCardPronto: {
+    backgroundColor: 'rgba(251, 146, 60, 0.15)',
+    borderWidth: 2,
+    borderColor: '#f59e0b',
   },
   lembreteCardEnviado: {
     backgroundColor: COLORS.cardBg,
@@ -208,6 +292,9 @@ const styles = StyleSheet.create({
   },
   statusPendente: {
     color: '#ca8a04',
+  },
+  statusPronto: {
+    color: '#f59e0b',
   },
   statusEnviado: {
     color: '#22c55e',
@@ -252,5 +339,21 @@ const styles = StyleSheet.create({
     color: COLORS.zinc400,
     textAlign: 'center',
     marginTop: 16,
+  },
+  whatsappButton: {
+    backgroundColor: '#25D366',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  whatsappButtonText: {
+    color: COLORS.white,
+    fontWeight: '700',
+    fontSize: 14,
+    marginLeft: 8,
   },
 });

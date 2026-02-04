@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Calendar, Users, DollarSign, LayoutDashboard } from 'lucide-react-native';
+import { Calendar, Users, DollarSign, LayoutDashboard, Settings, Bell } from 'lucide-react-native';
 import { View, ActivityIndicator } from 'react-native';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +12,8 @@ import DashboardScreen from '../screens/Dashboard';
 import AgendaScreen from '../screens/Agenda';
 import ClientesScreen from '../screens/Clientes';
 import CaixaScreen from '../screens/Caixa';
+import LembretesScreen from '../screens/Lembretes';
+import ConfiguracoesScreen from '../screens/Configuracoes';
 import LoginScreen from '../screens/Login';
 
 const Tab = createBottomTabNavigator();
@@ -63,6 +65,20 @@ const TabNavigator = () => {
         component={DashboardScreen}
         options={{
           tabBarIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="Lembretes"
+        component={LembretesScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Bell color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="Configurações"
+        component={ConfiguracoesScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
         }}
       />
     </Tab.Navigator>
