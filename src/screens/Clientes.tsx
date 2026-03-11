@@ -6,10 +6,13 @@ import { User, Phone, Calendar, Plus, AlertCircle, MessageCircle, Search } from 
 import { COLORS } from '../styles/colors';
 import { differenceInDays, parseISO } from 'date-fns';
 import { NovoClienteModal } from '../components/modals/NovoClienteModal';
+import { ClienteDetalhesModal } from '../components/modals/ClienteDetalhesModal';
 
 export default function ClientesScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [clienteSelecionado, setClienteSelecionado] = useState<any | null>(null);
+  const [detalhesVisible, setDetalhesVisible] = useState(false);
 
   const { data: clientes = [], isLoading } = useQuery({
     queryKey: ['clientes'],
@@ -92,12 +95,22 @@ export default function ClientesScreen() {
     );
   }
 
+  const abrirDetalhesCliente = (cliente: any) => {
+    setClienteSelecionado(cliente);
+    setDetalhesVisible(true);
+  };
+
   const renderClienteCard = (cliente: any) => (
-    <View key={cliente.id} style={[
+    <TouchableOpacity
+      key={cliente.id}
+      activeOpacity={0.9}
+      onPress={() => abrirDetalhesCliente(cliente)}
+      style={[
       styles.clienteCard,
       cliente.urgente && { borderLeftColor: '#ef4444', borderLeftWidth: 4 },
       cliente.precisaRetornar && !cliente.urgente && { borderLeftColor: COLORS.orange, borderLeftWidth: 4 }
-    ]}>
+    ]}
+    >
       <View style={styles.clienteHeader}>
         <View style={[
           styles.avatar,
@@ -133,7 +146,10 @@ export default function ClientesScreen() {
 
       {(cliente.precisaRetornar || cliente.urgente) && (
         <TouchableOpacity
-          onPress={() => enviarConvite(cliente)}
+          onPress={(event) => {
+            event.stopPropagation();
+            enviarConvite(cliente);
+          }}
           style={[
             styles.convideButtom,
             cliente.urgente && { backgroundColor: '#ef4444' }
@@ -145,7 +161,7 @@ export default function ClientesScreen() {
           </Text>
         </TouchableOpacity>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -206,6 +222,15 @@ export default function ClientesScreen() {
       <NovoClienteModal 
         visible={modalVisible} 
         onClose={() => setModalVisible(false)} 
+      />
+
+      <ClienteDetalhesModal
+        visible={detalhesVisible}
+        cliente={clienteSelecionado}
+        onClose={() => {
+          setDetalhesVisible(false);
+          setClienteSelecionado(null);
+        }}
       />
     </>
   );
