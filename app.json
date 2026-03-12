@@ -32,6 +32,9 @@
     "extra": {
       "base44AppId": "",
       "base44AppBaseUrl": ""
-    }
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

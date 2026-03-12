@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  Modal,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  TextInput,
+  ScrollView,
+  Platform,
+} from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { X } from 'lucide-react-native';
+import { format } from 'date-fns';
 import { COLORS } from '../../styles/colors';
 import { useCreateAgendamento } from '../../hooks/useAgendamento';
-import { format } from 'date-fns';
 
 interface NovoAgendamentoModalProps {
   visible: boolean;
@@ -12,57 +23,140 @@ interface NovoAgendamentoModalProps {
   selectedHora?: string | null;
 }
 
-export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({ visible, onClose, selectedDate, selectedHora }) => {
+const formatPhoneNumber = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  if (digits.length <= 7) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  }
+
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
+const getInitialDateTime = (selectedDate?: Date, selectedHora?: string | null) => {
+  if (selectedDate && selectedHora) {
+    const [horas, minutos] = selectedHora.split(':').map(Number);
+    const novaData = new Date(selectedDate);
+    novaData.setHours(horas || 0, minutos || 0, 0, 0);
+    return novaData;
+  }
+
+  return new Date();
+};
+
+export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
+  visible,
+  onClose,
+  selectedDate,
+  selectedHora,
+}) => {
   const [clienteNome, setClienteNome] = useState('');
   const [clienteTelefone, setClienteTelefone] = useState('');
   const [servico, setServico] = useState('');
-  const [dataHora, setDataHora] = useState(() => {
-    if (selectedDate && selectedHora) {
-      return format(selectedDate, 'dd/MM/yyyy') + ' ' + selectedHora;
-    }
-    return format(new Date(), "dd/MM/yyyy HH:mm");
-  });
+  const [dataHora, setDataHora] = useState<Date>(() => getInitialDateTime(selectedDate, selectedHora));
+  const [showPicker, setShowPicker] = useState(false);
+  const [androidPickerMode, setAndroidPickerMode] = useState<'date' | 'time'>('date');
 
   const { mutate: criarAgendamento, isPending } = useCreateAgendamento();
 
   const servicos = ['Corte', 'Barba', 'Corte + Barba', 'Pigmentação', 'Design de Barba'];
 
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    setDataHora(getInitialDateTime(selectedDate, selectedHora));
+    setShowPicker(false);
+    setAndroidPickerMode('date');
+  }, [visible, selectedDate, selectedHora]);
+
+  const handleOpenDateTimePicker = () => {
+    if (Platform.OS === 'android') {
+      setAndroidPickerMode('date');
+      setShowPicker(true);
+      return;
+    }
+
+    setShowPicker((current) => !current);
+  };
+
+  const handleAndroidPickerChange = (event: DateTimePickerEvent, selectedValue?: Date) => {
+    if (event.type === 'dismissed') {
+      setShowPicker(false);
+      return;
+    }
+
+    if (!selectedValue) {
+      return;
+    }
+
+    if (androidPickerMode === 'date') {
+      const novaData = new Date(dataHora);
+      novaData.setFullYear(selectedValue.getFullYear(), selectedValue.getMonth(), selectedValue.getDate());
+      setDataHora(novaData);
+      setAndroidPickerMode('time');
+      setShowPicker(true);
+      return;
+    }
+
+    const novaData = new Date(dataHora);
+    novaData.setHours(selectedValue.getHours(), selectedValue.getMinutes(), 0, 0);
+    setDataHora(novaData);
+    setShowPicker(false);
+  };
+
+  const handleIOSDateChange = (_event: DateTimePickerEvent, selectedValue?: Date) => {
+    if (!selectedValue) {
+      return;
+    }
+
+    const novaData = new Date(dataHora);
+    novaData.setFullYear(selectedValue.getFullYear(), selectedValue.getMonth(), selectedValue.getDate());
+    setDataHora(novaData);
+  };
+
+  const handleIOSTimeChange = (_event: DateTimePickerEvent, selectedValue?: Date) => {
+    if (!selectedValue) {
+      return;
+    }
+
+    const novaData = new Date(dataHora);
+    novaData.setHours(selectedValue.getHours(), selectedValue.getMinutes(), 0, 0);
+    setDataHora(novaData);
+  };
+
   const handleCriar = () => {
-    if (!clienteNome || !clienteTelefone || !servico || !dataHora) {
+    if (!clienteNome || !clienteTelefone || !servico) {
       alert('Preencha todos os campos');
       return;
     }
 
-    // Converter dataHora de "dd/MM/yyyy HH:mm" para ISO string
-    const [dataPart, horaPart] = dataHora.split(' ');
-    const [dia, mes, ano] = dataPart.split('/');
-    const [horas, minutos] = horaPart.split(':');
-    
-    const dataISO = new Date(
-      parseInt(ano),
-      parseInt(mes) - 1,
-      parseInt(dia),
-      parseInt(horas),
-      parseInt(minutos)
-    ).toISOString();
-
-    criarAgendamento({
-      cliente_nome: clienteNome,
-      cliente_telefone: clienteTelefone,
-      servico,
-      data_hora: dataISO,
-    }, {
-      onSuccess: () => {
-        setClienteNome('');
-        setClienteTelefone('');
-        setServico('');
-        onClose();
+    criarAgendamento(
+      {
+        cliente_nome: clienteNome,
+        cliente_telefone: clienteTelefone,
+        servico,
+        data_hora: dataHora.toISOString(),
       },
-      onError: (error) => {
-        console.error('Erro ao criar agendamento:', error);
-        alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      {
+        onSuccess: () => {
+          setClienteNome('');
+          setClienteTelefone('');
+          setServico('');
+          setShowPicker(false);
+          onClose();
+        },
+        onError: (error) => {
+          console.error('Erro ao criar agendamento:', error);
+          alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+        },
       }
-    });
+    );
   };
 
   return (
@@ -94,8 +188,8 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({ visi
                 style={styles.input}
                 placeholder="Ex: 11999999999"
                 placeholderTextColor={COLORS.zinc600}
-                value={clienteTelefone}
-                onChangeText={setClienteTelefone}
+                value={formatPhoneNumber(clienteTelefone)}
+                onChangeText={(value) => setClienteTelefone(value.replace(/\D/g, '').slice(0, 11))}
                 keyboardType="phone-pad"
               />
             </View>
@@ -103,20 +197,22 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({ visi
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Serviço</Text>
               <View style={styles.servicos}>
-                {servicos.map(s => (
+                {servicos.map((item) => (
                   <TouchableOpacity
-                    key={s}
-                    onPress={() => setServico(s)}
+                    key={item}
+                    onPress={() => setServico(item)}
                     style={[
                       styles.servicoButton,
-                      servico === s && styles.servicoButtonActive
+                      servico === item && styles.servicoButtonActive,
                     ]}
                   >
-                    <Text style={[
-                      styles.servicoText,
-                      servico === s && styles.servicoTextActive
-                    ]}>
-                      {s}
+                    <Text
+                      style={[
+                        styles.servicoText,
+                        servico === item && styles.servicoTextActive,
+                      ]}
+                    >
+                      {item}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -125,21 +221,43 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({ visi
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Data e Hora</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="dd/MM/yyyy HH:mm"
-                placeholderTextColor={COLORS.zinc600}
-                value={dataHora}
-                onChangeText={setDataHora}
-              />
+              <TouchableOpacity style={styles.input} activeOpacity={0.85} onPress={handleOpenDateTimePicker}>
+                <Text style={styles.inputText}>{format(dataHora, 'dd/MM/yyyy HH:mm')}</Text>
+              </TouchableOpacity>
+
+              {showPicker && Platform.OS === 'android' && (
+                <DateTimePicker
+                  value={dataHora}
+                  mode={androidPickerMode}
+                  is24Hour
+                  onChange={handleAndroidPickerChange}
+                />
+              )}
+
+              {showPicker && Platform.OS !== 'android' && (
+                <View style={styles.pickerCard}>
+                  <Text style={styles.pickerLabel}>Selecione a data</Text>
+                  <DateTimePicker
+                    value={dataHora}
+                    mode="date"
+                    display="inline"
+                    onChange={handleIOSDateChange}
+                  />
+
+                  <Text style={styles.pickerLabel}>Selecione o horário</Text>
+                  <DateTimePicker
+                    value={dataHora}
+                    mode="time"
+                    is24Hour
+                    onChange={handleIOSTimeChange}
+                  />
+                </View>
+              )}
             </View>
           </ScrollView>
 
           <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.button, styles.buttonSecondary]}
-              onPress={onClose}
-            >
+            <TouchableOpacity style={[styles.button, styles.buttonSecondary]} onPress={onClose}>
               <Text style={styles.buttonText}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -205,6 +323,22 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     borderWidth: 1,
     borderColor: COLORS.zinc800,
+  },
+  inputText: {
+    color: COLORS.white,
+  },
+  pickerCard: {
+    marginTop: 12,
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.zinc800,
+  },
+  pickerLabel: {
+    color: COLORS.white,
+    fontWeight: '600',
+    marginBottom: 8,
   },
   servicos: {
     flexDirection: 'row',
