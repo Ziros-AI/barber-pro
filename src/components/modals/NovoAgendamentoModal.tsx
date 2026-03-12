@@ -1,15 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  TextInput,
-  ScrollView,
-  Platform,
-} from 'react-native';
+import {View,Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, ScrollView, Platform} from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { X } from 'lucide-react-native';
 import { format } from 'date-fns';
