@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   dayButton: {
-    width: 64,
+    width: 70,
     height: 80,
     borderRadius: 16,
     backgroundColor: COLORS.cardBg,
