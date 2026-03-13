@@ -3,6 +3,8 @@ import { View, Text, Modal, TouchableOpacity, TextInput, StyleSheet, ActivityInd
 import { X } from 'lucide-react-native';
 import { COLORS } from '../../styles/colors';
 import { useCreateLembrete } from '../../hooks/useLembrete';
+import { ClienteAutocompleteFields } from '../shared/ClienteAutocompleteFields';
+import { DateTimeField } from '../shared/DateTimeField';
 
 interface NovoLembreteModalProps {
   visible: boolean;
@@ -13,53 +15,48 @@ export const NovoLembreteModal: React.FC<NovoLembreteModalProps> = ({ visible, o
   const [clienteNome, setClienteNome] = useState('');
   const [clienteTelefone, setClienteTelefone] = useState('');
   const [servico, setServico] = useState('');
-  const [dataEnvio, setDataEnvio] = useState('');
-  const [hora, setHora] = useState('');
+  const [dataHora, setDataHora] = useState(new Date());
   const [mensagem, setMensagem] = useState('');
 
   const { mutate: criarLembrete, isPending } = useCreateLembrete();
 
   const handleSubmit = () => {
-    if (!clienteNome || !clienteTelefone || !servico || !dataEnvio || !hora || !mensagem) {
+    if (!clienteNome || !clienteTelefone || !servico || !mensagem) {
       Alert.alert('Erro', 'Preencha todos os campos');
       return;
     }
 
-    // Combinar data e hora no formato ISO
-    const [ano, mes, dia] = dataEnvio.split('-');
-    const dataHora = `${ano}-${mes}-${dia}T${hora}:00.000Z`;
-
-    criarLembrete({
-      cliente_nome: clienteNome,
-      cliente_telefone: clienteTelefone,
-      servico,
-      data_envio: dataHora,
-      mensagem,
-      status: 'pendente'
-    }, {
-      onSuccess: () => {
-        Alert.alert('Sucesso', 'Lembrete criado com sucesso!');
-        setClienteNome('');
-        setClienteTelefone('');
-        setServico('');
-        setDataEnvio('');
-        setHora('');
-        setMensagem('');
-        onClose();
+    criarLembrete(
+      {
+        cliente_nome: clienteNome,
+        cliente_telefone: clienteTelefone,
+        servico,
+        data_envio: dataHora.toISOString(),
+        mensagem,
+        status: 'pendente',
       },
-      onError: (error: any) => {
-        Alert.alert('Erro', `Não foi possível criar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      {
+        onSuccess: () => {
+          Alert.alert('Sucesso', 'Lembrete criado com sucesso!');
+          setClienteNome('');
+          setClienteTelefone('');
+          setServico('');
+          setDataHora(new Date());
+          setMensagem('');
+          onClose();
+        },
+        onError: (error: any) => {
+          Alert.alert(
+            'Erro',
+            `Não foi possível criar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+          );
+        },
       }
-    });
+    );
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.modal}>
           <View style={styles.header}>
@@ -70,28 +67,18 @@ export const NovoLembreteModal: React.FC<NovoLembreteModalProps> = ({ visible, o
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nome do Cliente</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: João Silva"
-                placeholderTextColor={COLORS.zinc600}
-                value={clienteNome}
-                onChangeText={setClienteNome}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Telefone (WhatsApp)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: 11999999999"
-                placeholderTextColor={COLORS.zinc600}
-                value={clienteTelefone}
-                onChangeText={setClienteTelefone}
-                keyboardType="phone-pad"
-              />
-            </View>
+            <ClienteAutocompleteFields
+              visible={visible}
+              clienteNome={clienteNome}
+              clienteTelefone={clienteTelefone}
+              setClienteNome={setClienteNome}
+              setClienteTelefone={setClienteTelefone}
+              inputBackgroundColor={COLORS.cardBg}
+              labelTelefone="Telefone (WhatsApp)"
+              inputGroupStyle={styles.inputGroup}
+              inputStyle={styles.input}
+              labelStyle={styles.label}
+            />
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Serviço</Text>
@@ -104,29 +91,18 @@ export const NovoLembreteModal: React.FC<NovoLembreteModalProps> = ({ visible, o
               />
             </View>
 
-            <View style={styles.row}>
-              <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.label}>Data</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="AAAA-MM-DD"
-                  placeholderTextColor={COLORS.zinc600}
-                  value={dataEnvio}
-                  onChangeText={setDataEnvio}
-                />
-              </View>
-
-              <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                <Text style={styles.label}>Hora</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="HH:MM"
-                  placeholderTextColor={COLORS.zinc600}
-                  value={hora}
-                  onChangeText={setHora}
-                />
-              </View>
-            </View>
+            <DateTimeField
+              label="Data e Hora"
+              value={dataHora}
+              onChange={setDataHora}
+              inputBackgroundColor={COLORS.cardBg}
+              inputBorderWidth={2}
+              containerStyle={styles.inputGroup}
+              labelStyle={styles.label}
+              inputStyle={styles.input}
+              pickerCardStyle={styles.pickerCard}
+              pickerLabelStyle={styles.label}
+            />
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Mensagem</Text>
@@ -213,9 +189,8 @@ const styles = StyleSheet.create({
     height: 100,
     paddingTop: 16,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  pickerCard: {
+    borderWidth: 2,
   },
   submitButton: {
     backgroundColor: COLORS.gold,

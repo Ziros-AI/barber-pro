@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import {View,Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, ScrollView, Platform} from 'react-native';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { X } from 'lucide-react-native';
-import { format } from 'date-fns';
 import { COLORS } from '../../styles/colors';
 import { useCreateAgendamento } from '../../hooks/useAgendamento';
+import { ClienteAutocompleteFields } from '../shared/ClienteAutocompleteFields';
+import { DateTimeField } from '../shared/DateTimeField';
 
 interface NovoAgendamentoModalProps {
   visible: boolean;
@@ -12,20 +12,6 @@ interface NovoAgendamentoModalProps {
   selectedDate?: Date;
   selectedHora?: string | null;
 }
-
-const formatPhoneNumber = (value: string) => {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
-
-  if (digits.length <= 2) {
-    return digits;
-  }
-
-  if (digits.length <= 7) {
-    return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  }
-
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-};
 
 const getInitialDateTime = (selectedDate?: Date, selectedHora?: string | null) => {
   if (selectedDate && selectedHora) {
@@ -38,18 +24,11 @@ const getInitialDateTime = (selectedDate?: Date, selectedHora?: string | null) =
   return new Date();
 };
 
-export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
-  visible,
-  onClose,
-  selectedDate,
-  selectedHora,
-}) => {
+export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({ visible, onClose, selectedDate, selectedHora }) => {
   const [clienteNome, setClienteNome] = useState('');
   const [clienteTelefone, setClienteTelefone] = useState('');
   const [servico, setServico] = useState('');
   const [dataHora, setDataHora] = useState<Date>(() => getInitialDateTime(selectedDate, selectedHora));
-  const [showPicker, setShowPicker] = useState(false);
-  const [androidPickerMode, setAndroidPickerMode] = useState<'date' | 'time'>('date');
 
   const { mutate: criarAgendamento, isPending } = useCreateAgendamento();
 
@@ -61,64 +40,7 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
     }
 
     setDataHora(getInitialDateTime(selectedDate, selectedHora));
-    setShowPicker(false);
-    setAndroidPickerMode('date');
   }, [visible, selectedDate, selectedHora]);
-
-  const handleOpenDateTimePicker = () => {
-    if (Platform.OS === 'android') {
-      setAndroidPickerMode('date');
-      setShowPicker(true);
-      return;
-    }
-
-    setShowPicker((current) => !current);
-  };
-
-  const handleAndroidPickerChange = (event: DateTimePickerEvent, selectedValue?: Date) => {
-    if (event.type === 'dismissed') {
-      setShowPicker(false);
-      return;
-    }
-
-    if (!selectedValue) {
-      return;
-    }
-
-    if (androidPickerMode === 'date') {
-      const novaData = new Date(dataHora);
-      novaData.setFullYear(selectedValue.getFullYear(), selectedValue.getMonth(), selectedValue.getDate());
-      setDataHora(novaData);
-      setAndroidPickerMode('time');
-      setShowPicker(true);
-      return;
-    }
-
-    const novaData = new Date(dataHora);
-    novaData.setHours(selectedValue.getHours(), selectedValue.getMinutes(), 0, 0);
-    setDataHora(novaData);
-    setShowPicker(false);
-  };
-
-  const handleIOSDateChange = (_event: DateTimePickerEvent, selectedValue?: Date) => {
-    if (!selectedValue) {
-      return;
-    }
-
-    const novaData = new Date(dataHora);
-    novaData.setFullYear(selectedValue.getFullYear(), selectedValue.getMonth(), selectedValue.getDate());
-    setDataHora(novaData);
-  };
-
-  const handleIOSTimeChange = (_event: DateTimePickerEvent, selectedValue?: Date) => {
-    if (!selectedValue) {
-      return;
-    }
-
-    const novaData = new Date(dataHora);
-    novaData.setHours(selectedValue.getHours(), selectedValue.getMinutes(), 0, 0);
-    setDataHora(novaData);
-  };
 
   const handleCriar = () => {
     if (!clienteNome || !clienteTelefone || !servico) {
@@ -138,7 +60,6 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
           setClienteNome('');
           setClienteTelefone('');
           setServico('');
-          setShowPicker(false);
           onClose();
         },
         onError: (error) => {
@@ -160,29 +81,18 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.content}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nome do Cliente</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: João Silva"
-                placeholderTextColor={COLORS.zinc600}
-                value={clienteNome}
-                onChangeText={setClienteNome}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Telefone</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: 11999999999"
-                placeholderTextColor={COLORS.zinc600}
-                value={formatPhoneNumber(clienteTelefone)}
-                onChangeText={(value) => setClienteTelefone(value.replace(/\D/g, '').slice(0, 11))}
-                keyboardType="phone-pad"
-              />
-            </View>
+          <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+            <ClienteAutocompleteFields
+              visible={visible}
+              clienteNome={clienteNome}
+              clienteTelefone={clienteTelefone}
+              setClienteNome={setClienteNome}
+              setClienteTelefone={setClienteTelefone}
+              inputBackgroundColor={COLORS.background}
+              inputGroupStyle={styles.inputGroup}
+              inputStyle={styles.input}
+              labelStyle={styles.label}
+            />
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Serviço</Text>
@@ -191,17 +101,9 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
                   <TouchableOpacity
                     key={item}
                     onPress={() => setServico(item)}
-                    style={[
-                      styles.servicoButton,
-                      servico === item && styles.servicoButtonActive,
-                    ]}
+                    style={[styles.servicoButton, servico === item && styles.servicoButtonActive]}
                   >
-                    <Text
-                      style={[
-                        styles.servicoText,
-                        servico === item && styles.servicoTextActive,
-                      ]}
-                    >
+                    <Text style={[styles.servicoText, servico === item && styles.servicoTextActive]}>
                       {item}
                     </Text>
                   </TouchableOpacity>
@@ -209,52 +111,25 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
               </View>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Data e Hora</Text>
-              <TouchableOpacity style={styles.input} activeOpacity={0.85} onPress={handleOpenDateTimePicker}>
-                <Text style={styles.inputText}>{format(dataHora, 'dd/MM/yyyy HH:mm')}</Text>
-              </TouchableOpacity>
-
-              {showPicker && Platform.OS === 'android' && (
-                <DateTimePicker
-                  value={dataHora}
-                  mode={androidPickerMode}
-                  is24Hour
-                  onChange={handleAndroidPickerChange}
-                />
-              )}
-
-              {showPicker && Platform.OS !== 'android' && (
-                <View style={styles.pickerCard}>
-                  <Text style={styles.pickerLabel}>Selecione a data</Text>
-                  <DateTimePicker
-                    value={dataHora}
-                    mode="date"
-                    display="inline"
-                    onChange={handleIOSDateChange}
-                  />
-
-                  <Text style={styles.pickerLabel}>Selecione o horário</Text>
-                  <DateTimePicker
-                    value={dataHora}
-                    mode="time"
-                    is24Hour
-                    onChange={handleIOSTimeChange}
-                  />
-                </View>
-              )}
-            </View>
+            <DateTimeField
+              label="Data e Hora"
+              value={dataHora}
+              onChange={setDataHora}
+              inputBackgroundColor={COLORS.background}
+              containerStyle={styles.inputGroup}
+              labelStyle={styles.label}
+              inputStyle={styles.input}
+              inputTextStyle={styles.inputText}
+              pickerCardStyle={styles.pickerCard}
+              pickerLabelStyle={styles.pickerLabel}
+            />
           </ScrollView>
 
           <View style={styles.actions}>
             <TouchableOpacity style={[styles.button, styles.buttonSecondary]} onPress={onClose}>
               <Text style={styles.buttonText}>Cancelar</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.buttonPrimary]}
-              onPress={handleCriar}
-              disabled={isPending}
-            >
+            <TouchableOpacity style={[styles.button, styles.buttonPrimary]} onPress={handleCriar} disabled={isPending}>
               {isPending ? (
                 <ActivityIndicator size="small" color={COLORS.background} />
               ) : (
