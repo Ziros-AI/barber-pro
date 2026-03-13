@@ -2,15 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { X } from 'lucide-react-native';
 import { COLORS } from '../../styles/colors';
-import { useCreateAgendamento } from '../../hooks/useAgendamento';
+import { useCreateAgendamento, useUpdateAgendamento } from '../../hooks/useAgendamento';
 import { ClienteAutocompleteFields } from '../shared/ClienteAutocompleteFields';
 import { DateTimeField } from '../shared/DateTimeField';
+import type { Agendamento } from '../../types';
 
 interface NovoAgendamentoModalProps {
   visible: boolean;
   onClose: () => void;
   selectedDate?: Date;
   selectedHora?: string | null;
+  agendamento?: Agendamento | null;
 }
 
 const getInitialDateTime = (selectedDate?: Date, selectedHora?: string | null) => {
@@ -24,13 +26,22 @@ const getInitialDateTime = (selectedDate?: Date, selectedHora?: string | null) =
   return new Date();
 };
 
-export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({ visible, onClose, selectedDate, selectedHora }) => {
+export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
+  visible,
+  onClose,
+  selectedDate,
+  selectedHora,
+  agendamento,
+}) => {
   const [clienteNome, setClienteNome] = useState('');
   const [clienteTelefone, setClienteTelefone] = useState('');
   const [servico, setServico] = useState('');
   const [dataHora, setDataHora] = useState<Date>(() => getInitialDateTime(selectedDate, selectedHora));
 
-  const { mutate: criarAgendamento, isPending } = useCreateAgendamento();
+  const { mutate: criarAgendamento, isPending: isCreating } = useCreateAgendamento();
+  const { mutate: atualizarAgendamento, isPending: isUpdating } = useUpdateAgendamento();
+  const isEditing = Boolean(agendamento);
+  const isPending = isCreating || isUpdating;
 
   const servicos = ['Corte', 'Barba', 'Corte + Barba', 'Pigmentação', 'Design de Barba'];
 
@@ -39,8 +50,19 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({ visi
       return;
     }
 
+    if (agendamento) {
+      setClienteNome(agendamento.cliente_nome);
+      setClienteTelefone(agendamento.cliente_telefone);
+      setServico(agendamento.servico);
+      setDataHora(new Date(agendamento.data_hora));
+      return;
+    }
+
+    setClienteNome('');
+    setClienteTelefone('');
+    setServico('');
     setDataHora(getInitialDateTime(selectedDate, selectedHora));
-  }, [visible, selectedDate, selectedHora]);
+  }, [visible, selectedDate, selectedHora, agendamento]);
 
   const handleCriar = () => {
     if (!clienteNome || !clienteTelefone || !servico) {
@@ -48,26 +70,44 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({ visi
       return;
     }
 
-    criarAgendamento(
-      {
-        cliente_nome: clienteNome,
-        cliente_telefone: clienteTelefone,
-        servico,
-        data_hora: dataHora.toISOString(),
+    const payload = {
+      cliente_nome: clienteNome,
+      cliente_telefone: clienteTelefone,
+      servico,
+      data_hora: dataHora.toISOString(),
+    };
+
+    if (agendamento) {
+      atualizarAgendamento(
+        {
+          id: agendamento.id,
+          data: payload,
+        },
+        {
+          onSuccess: () => {
+            onClose();
+          },
+          onError: (error) => {
+            console.error('Erro ao atualizar agendamento:', error);
+            alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+          },
+        }
+      );
+      return;
+    }
+
+    criarAgendamento(payload, {
+      onSuccess: () => {
+        setClienteNome('');
+        setClienteTelefone('');
+        setServico('');
+        onClose();
       },
-      {
-        onSuccess: () => {
-          setClienteNome('');
-          setClienteTelefone('');
-          setServico('');
-          onClose();
-        },
-        onError: (error) => {
-          console.error('Erro ao criar agendamento:', error);
-          alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-        },
-      }
-    );
+      onError: (error) => {
+        console.error('Erro ao criar agendamento:', error);
+        alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      },
+    });
   };
 
   return (
@@ -75,7 +115,7 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({ visi
       <View style={styles.overlay}>
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.title}>Novo Agendamento</Text>
+            <Text style={styles.title}>{isEditing ? 'Editar Agendamento' : 'Novo Agendamento'}</Text>
             <TouchableOpacity onPress={onClose}>
               <X color={COLORS.white} size={24} />
             </TouchableOpacity>
@@ -133,7 +173,7 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({ visi
               {isPending ? (
                 <ActivityIndicator size="small" color={COLORS.background} />
               ) : (
-                <Text style={styles.buttonTextPrimary}>Criar</Text>
+                <Text style={styles.buttonTextPrimary}>{isEditing ? 'Salvar' : 'Criar'}</Text>
               )}
             </TouchableOpacity>
           </View>
