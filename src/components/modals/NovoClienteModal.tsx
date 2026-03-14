@@ -3,6 +3,7 @@ import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, Tex
 import { X } from 'lucide-react-native';
 import { COLORS } from '../../styles/colors';
 import { useCreateCliente } from '../../hooks/useCliente';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 
 interface NovoClienteModalProps {
   visible: boolean;
@@ -42,73 +43,83 @@ export const NovoClienteModal: React.FC<NovoClienteModalProps> = ({ visible, onC
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Novo Cliente</Text>
-            <TouchableOpacity onPress={onClose}>
-              <X color={COLORS.white} size={24} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.content}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nome *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: João Silva"
-                placeholderTextColor={COLORS.zinc600}
-                value={nome}
-                onChangeText={setNome}
-              />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.overlay}>
+          <View style={styles.container}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Novo Cliente</Text>
+              <TouchableOpacity onPress={onClose}>
+                <X color={COLORS.white} size={24} />
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: joao@email.com"
-                placeholderTextColor={COLORS.zinc600}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Telefone</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: 11999999999"
-                placeholderTextColor={COLORS.zinc600}
-                value={telefone}
-                onChangeText={setTelefone}
-                keyboardType="phone-pad"
-              />
-            </View>
-          </ScrollView>
-
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.button, styles.buttonSecondary]}
-              onPress={onClose}
+            <ScrollView
+              style={styles.content}
+              keyboardShouldPersistTaps="handled"
             >
-              <Text style={styles.buttonText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.buttonPrimary]}
-              onPress={handleCriar}
-              disabled={isPending}
-            >
-              {isPending ? (
-                <ActivityIndicator size="small" color={COLORS.background} />
-              ) : (
-                <Text style={styles.buttonTextPrimary}>Criar</Text>
-              )}
-            </TouchableOpacity>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Nome *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: João Silva"
+                  placeholderTextColor={COLORS.zinc600}
+                  value={nome}
+                  onChangeText={setNome}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: joao@email.com"
+                  placeholderTextColor={COLORS.zinc600}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Telefone</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: 11999999999"
+                  placeholderTextColor={COLORS.zinc600}
+                  value={telefone}
+                  onChangeText={setTelefone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.actions}>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonSecondary]}
+                onPress={onClose}
+              >
+                <Text style={styles.buttonText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.button, styles.buttonPrimary]}
+                onPress={handleCriar}
+                disabled={isPending}
+              >
+                {isPending ? (
+                  <ActivityIndicator size="small" color={COLORS.background} />
+                ) : (
+                  <Text style={styles.buttonTextPrimary}>Criar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
