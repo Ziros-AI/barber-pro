@@ -46,12 +46,8 @@ export const NovoLembreteModal: React.FC<NovoLembreteModalProps> = ({ visible, o
           setMensagem('');
           onClose();
         },
-        onError: (error: any) => {
-          Alert.alert(
-            'Erro',
-            `Não foi possível criar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
-          );
-        },
+        onError: (error) => { console.error('Erro ao criar cliente:', error);
+           alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`); }
       }
     );
   };
