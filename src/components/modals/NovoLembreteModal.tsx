@@ -5,6 +5,7 @@ import { COLORS } from '../../styles/colors';
 import { useCreateLembrete } from '../../hooks/useLembrete';
 import { ClienteAutocompleteFields } from '../shared/ClienteAutocompleteFields';
 import { DateTimeField } from '../shared/DateTimeField';
+import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 
 interface NovoLembreteModalProps {
   visible: boolean;
@@ -57,81 +58,98 @@ export const NovoLembreteModal: React.FC<NovoLembreteModalProps> = ({ visible, o
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.modal}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Novo Lembrete</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <X color={COLORS.zinc400} size={24} />
-            </TouchableOpacity>
-          </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={80}
+      >
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
 
-          <View style={styles.form}>
-            <ClienteAutocompleteFields
-              visible={visible}
-              clienteNome={clienteNome}
-              clienteTelefone={clienteTelefone}
-              setClienteNome={setClienteNome}
-              setClienteTelefone={setClienteTelefone}
-              inputBackgroundColor={COLORS.cardBg}
-              labelTelefone="Telefone (WhatsApp)"
-              inputGroupStyle={styles.inputGroup}
-              inputStyle={styles.input}
-              labelStyle={styles.label}
-            />
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Serviço</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: Corte de Cabelo"
-                placeholderTextColor={COLORS.zinc600}
-                value={servico}
-                onChangeText={setServico}
-              />
+            <View style={styles.header}>
+              <Text style={styles.title}>Novo Lembrete</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <X color={COLORS.zinc400} size={24} />
+              </TouchableOpacity>
             </View>
 
-            <DateTimeField
-              label="Data e Hora"
-              value={dataHora}
-              onChange={setDataHora}
-              inputBackgroundColor={COLORS.cardBg}
-              inputBorderWidth={2}
-              containerStyle={styles.inputGroup}
-              labelStyle={styles.label}
-              inputStyle={styles.input}
-              pickerCardStyle={styles.pickerCard}
-              pickerLabelStyle={styles.label}
-            />
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Mensagem</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Ex: Olá {cliente}, lembrete do seu {servico} amanhã..."
-                placeholderTextColor={COLORS.zinc600}
-                value={mensagem}
-                onChangeText={setMensagem}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={handleSubmit}
-              disabled={isPending}
+            <ScrollView
+              style={styles.form}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingBottom: 200,
+                flexGrow: 1
+              }}
             >
-              {isPending ? (
-                <ActivityIndicator size="small" color={COLORS.background} />
-              ) : (
-                <Text style={styles.submitButtonText}>Criar Lembrete</Text>
-              )}
-            </TouchableOpacity>
+              <ClienteAutocompleteFields
+                visible={visible}
+                clienteNome={clienteNome}
+                clienteTelefone={clienteTelefone}
+                setClienteNome={setClienteNome}
+                setClienteTelefone={setClienteTelefone}
+                inputBackgroundColor={COLORS.cardBg}
+                labelTelefone="Telefone (WhatsApp)"
+                inputGroupStyle={styles.inputGroup}
+                inputStyle={styles.input}
+                labelStyle={styles.label}
+              />
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Serviço</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: Corte de Cabelo"
+                  placeholderTextColor={COLORS.zinc600}
+                  value={servico}
+                  onChangeText={setServico}
+                />
+              </View>
+
+              <DateTimeField
+                label="Data e Hora"
+                value={dataHora}
+                onChange={setDataHora}
+                inputBackgroundColor={COLORS.cardBg}
+                inputBorderWidth={2}
+                containerStyle={styles.inputGroup}
+                labelStyle={styles.label}
+                inputStyle={styles.input}
+                pickerCardStyle={styles.pickerCard}
+                pickerLabelStyle={styles.label}
+              />
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Mensagem</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Ex: Olá {cliente}, lembrete do seu {servico} amanhã..."
+                  placeholderTextColor={COLORS.zinc600}
+                  value={mensagem}
+                  onChangeText={setMensagem}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={handleSubmit}
+                disabled={isPending}
+              >
+                {isPending ? (
+                  <ActivityIndicator size="small" color={COLORS.background} />
+                ) : (
+                  <Text style={styles.submitButtonText}>Criar Lembrete</Text>
+                )}
+              </TouchableOpacity>
+
+            </ScrollView>
+
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
