@@ -135,8 +135,13 @@ export const DateTimeField: React.FC<DateTimeFieldProps> = ({
 
       {showTimePicker && Platform.OS !== 'android' && (
         <View style={[styles.pickerCard, { backgroundColor: inputBackgroundColor }, pickerCardStyle]}>
-          <Text style={[styles.pickerLabel, pickerLabelStyle]}>Selecione o horário</Text>
-          <DateTimePicker value={value} mode="time" is24Hour onChange={handleTimeChange} />
+          <DateTimePicker
+            value={value}
+            mode="time"
+            display="spinner"
+            is24Hour
+            onChange={handleTimeChange}
+          />
         </View>
       )}
     </View>
