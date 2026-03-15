@@ -29,3 +29,22 @@ export function isValidPhone(phone: string): boolean {
   const cleaned = phone.replace(/\D/g, '');
   return cleaned.length === 11;
 }
+
+export function getErrorMessage(error: unknown, fallback = 'Erro desconhecido'): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim().length > 0) {
+      return message;
+    }
+  }
+
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error;
+  }
+
+  return fallback;
+}

@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
-import { X, Plus, Minus, DollarSign } from 'lucide-react-native';
+import { X, Plus, Minus, Check, CheckCircle2 } from 'lucide-react-native';
 import { COLORS } from '../../styles/colors';
-import { useCreateVenda } from '../../hooks/useVenda';
+import { FormaPagamento, useCreateVenda } from '../../hooks/useVenda';
 import { useUpdateAgendamento } from '../../hooks/useAgendamento';
 import { useUpdateProduto } from '../../hooks/useProduto';
 import { useQueryClient } from '@tanstack/react-query';
+import { getErrorMessage } from '../../lib/utils';
+import { supabase } from '../../api/supabaseClient';
 
 interface Agendamento {
   id: string;
   cliente_nome: string;
+  cliente_telefone?: string;
   servico: string;
   data_hora: string;
   valor?: number;
@@ -37,118 +40,182 @@ interface FinalizarVendaModalProps {
   produtos: Produto[];
 }
 
-export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({ 
-  visible, 
-  onClose, 
+export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
+  visible,
+  onClose,
   agendamento,
-  produtos 
+  produtos,
 }) => {
   const [produtosSelecionados, setProdutosSelecionados] = useState<ProdutoSelecionado[]>([]);
-  const [formaPagamento, setFormaPagamento] = useState('Dinheiro');
+  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('Dinheiro');
 
   const queryClient = useQueryClient();
-  const { mutate: criarVenda, isPending: criandoVenda } = useCreateVenda();
-  const { mutate: atualizarAgendamento } = useUpdateAgendamento();
-  const { mutate: atualizarProduto } = useUpdateProduto();
+  const { mutateAsync: criarVenda, isPending: criandoVenda } = useCreateVenda();
+  const { mutateAsync: atualizarAgendamento, isPending: atualizandoAgendamento } = useUpdateAgendamento();
+  const { mutateAsync: atualizarProduto } = useUpdateProduto();
 
-  const valorServico = agendamento.valor || 50; // Padrão se não tiver valor
+  const valorServico = agendamento.valor || 50;
   const valorProdutos = produtosSelecionados.reduce((sum, p) => sum + p.subtotal, 0);
   const valorTotal = valorServico + valorProdutos;
+  const finalizando = criandoVenda || atualizandoAgendamento;
+
+  const produtosSelecionadosPorId = useMemo(() => {
+    return new Map(produtosSelecionados.map((item) => [item.produto_id, item]));
+  }, [produtosSelecionados]);
 
   const adicionarProduto = (produto: Produto) => {
-    const existe = produtosSelecionados.find(p => p.produto_id === produto.id);
-    
-    if (existe) {
-      if (existe.quantidade >= produto.estoque) {
+    const existente = produtosSelecionadosPorId.get(produto.id);
+
+    if (existente) {
+      if (existente.quantidade >= produto.estoque) {
         Alert.alert('Estoque insuficiente', `Disponível: ${produto.estoque} unidades`);
         return;
       }
-      setProdutosSelecionados(
-        produtosSelecionados.map(p =>
-          p.produto_id === produto.id
-            ? { ...p, quantidade: p.quantidade + 1, subtotal: (p.quantidade + 1) * p.preco }
-            : p
+
+      setProdutosSelecionados((current) =>
+        current.map((item) =>
+          item.produto_id === produto.id
+            ? {
+                ...item,
+                quantidade: item.quantidade + 1,
+                subtotal: (item.quantidade + 1) * item.preco,
+              }
+            : item
         )
       );
-    } else {
-      if (produto.estoque < 1) {
-        Alert.alert('Sem estoque', 'Este produto está sem estoque');
-        return;
-      }
-      setProdutosSelecionados([
-        ...produtosSelecionados,
-        {
-          produto_id: produto.id,
-          nome: produto.nome,
-          quantidade: 1,
-          preco: produto.preco,
-          subtotal: produto.preco
-        }
-      ]);
+      return;
     }
+
+    if (produto.estoque < 1) {
+      Alert.alert('Sem estoque', 'Este produto está sem estoque');
+      return;
+    }
+
+    setProdutosSelecionados((current) => [
+      ...current,
+      {
+        produto_id: produto.id,
+        nome: produto.nome,
+        quantidade: 1,
+        preco: produto.preco,
+        subtotal: produto.preco,
+      },
+    ]);
   };
 
   const removerProduto = (produtoId: string) => {
-    const produto = produtosSelecionados.find(p => p.produto_id === produtoId);
+    const produto = produtosSelecionados.find((p) => p.produto_id === produtoId);
     if (!produto) return;
 
     if (produto.quantidade > 1) {
-      setProdutosSelecionados(
-        produtosSelecionados.map(p =>
-          p.produto_id === produtoId
-            ? { ...p, quantidade: p.quantidade - 1, subtotal: (p.quantidade - 1) * p.preco }
-            : p
+      setProdutosSelecionados((current) =>
+        current.map((item) =>
+          item.produto_id === produtoId
+            ? {
+                ...item,
+                quantidade: item.quantidade - 1,
+                subtotal: (item.quantidade - 1) * item.preco,
+              }
+            : item
         )
       );
-    } else {
-      setProdutosSelecionados(produtosSelecionados.filter(p => p.produto_id !== produtoId));
+      return;
     }
+
+    setProdutosSelecionados((current) => current.filter((item) => item.produto_id !== produtoId));
+  };
+
+  const buscarClienteId = async () => {
+    const nome = agendamento.cliente_nome?.trim();
+    const telefone = agendamento.cliente_telefone?.replace(/\D/g, '');
+
+    if (!nome || !telefone) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('clientes')
+      .select('id')
+      .eq('nome', nome)
+      .eq('telefone', telefone)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return data?.id ?? null;
   };
 
   const handleFinalizar = async () => {
-    criarVenda({
-      valor_servico: valorServico,
-      valor_total: valorTotal,
-      produtos_vendidos: produtosSelecionados,
-      cliente_id: undefined
-    }, {
-      onSuccess: () => {
-        // Atualizar status do agendamento para finalizado
-        atualizarAgendamento({
-          id: agendamento.id,
-          data: { status: 'finalizado' }
-        });
+    try {
+      for (const item of produtosSelecionados) {
+        const produtoAtual = produtos.find((produto) => produto.id === item.produto_id);
 
-        // Decrementar estoque dos produtos
-        produtosSelecionados.forEach(item => {
-          const produto = produtos.find(p => p.id === item.produto_id);
-          if (produto) {
-            atualizarProduto({
-              id: produto.id,
-              data: { estoque: produto.estoque - item.quantidade }
-            });
-          }
-        });
+        if (!produtoAtual) {
+          throw new Error(`Produto não encontrado: ${item.nome}`);
+        }
 
-        // Invalidar queries para atualizar listas
-        queryClient.invalidateQueries({ queryKey: ['agendamentos-hoje-confirmados'] });
-        queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
-        queryClient.invalidateQueries({ queryKey: ['produtos'] });
-        queryClient.invalidateQueries({ queryKey: ['vendas'] });
-        queryClient.invalidateQueries({ queryKey: ['vendas-hoje'] });
-
-        Alert.alert('Sucesso', 'Venda finalizada com sucesso!');
-        setProdutosSelecionados([]);
-        setFormaPagamento('Dinheiro');
-        onClose();
-      },
-      onError: (error) => {
-        Alert.alert('Erro', `Não foi possível finalizar a venda: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+        if (produtoAtual.estoque < item.quantidade) {
+          throw new Error(`Estoque insuficiente para ${item.nome}`);
+        }
       }
-    });
+
+      const clienteId = await buscarClienteId();
+
+      await criarVenda({
+        valor_servico: valorServico,
+        valor_total: valorTotal,
+        forma_pagamento: formaPagamento,
+        produtos_vendidos: produtosSelecionados.map((item) => ({
+          nome: item.nome,
+          quantidade: item.quantidade,
+          preco_unitario: item.preco,
+          subtotal: item.subtotal,
+        })),
+        cliente_id: clienteId,
+      });
+
+      await atualizarAgendamento({
+        id: agendamento.id,
+        data: { status: 'concluido' },
+      });
+
+      await Promise.all(
+        produtosSelecionados.map(async (item) => {
+          const produtoAtual = produtos.find((produto) => produto.id === item.produto_id);
+          if (!produtoAtual) return;
+
+          await atualizarProduto({
+            id: produtoAtual.id,
+            data: { estoque: produtoAtual.estoque - item.quantidade },
+          });
+        })
+      );
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['agendamentos-hoje-confirmados'] }),
+        queryClient.invalidateQueries({ queryKey: ['agendamentos'] }),
+        queryClient.invalidateQueries({ queryKey: ['produtos'] }),
+        queryClient.invalidateQueries({ queryKey: ['vendas'] }),
+        queryClient.invalidateQueries({ queryKey: ['vendas-hoje'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+      ]);
+
+      Alert.alert('Sucesso', `Venda finalizada com sucesso via ${formaPagamento}!`);
+      setProdutosSelecionados([]);
+      setFormaPagamento('Dinheiro');
+      onClose();
+    } catch (error) {
+      Alert.alert(
+        'Erro',
+        `Não foi possível finalizar a venda: ${getErrorMessage(error)}`
+      );
+    }
   };
 
-  const formasPagamento = ['Dinheiro', 'PIX', 'Cartão Débito', 'Cartão Crédito'];
+  const formasPagamento: FormaPagamento[] = ['Dinheiro', 'PIX', 'Cartão Débito', 'Cartão Crédito'];
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -159,7 +226,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
               <Text style={styles.title}>{agendamento.cliente_nome}</Text>
               <Text style={styles.subtitle}>{agendamento.servico}</Text>
             </View>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} disabled={finalizando}>
               <X color={COLORS.white} size={24} />
             </TouchableOpacity>
           </View>
@@ -172,19 +239,23 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
 
             <Text style={styles.sectionTitle}>Adicionar Produtos</Text>
             <View style={styles.produtosGrid}>
-              {produtos.map(produto => {
-                const selecionado = produtosSelecionados.find(p => p.produto_id === produto.id);
+              {produtos.map((produto) => {
+                const selecionado = produtosSelecionadosPorId.get(produto.id);
+
                 return (
                   <View key={produto.id} style={styles.produtoCard}>
-                    <Text style={styles.produtoNome} numberOfLines={1}>{produto.nome}</Text>
+                    <Text style={styles.produtoNome} numberOfLines={1}>
+                      {produto.nome}
+                    </Text>
                     <Text style={styles.produtoPreco}>R$ {produto.preco.toFixed(2)}</Text>
                     <Text style={styles.produtoEstoque}>Estoque: {produto.estoque}</Text>
-                    
+
                     {selecionado ? (
                       <View style={styles.quantidadeControl}>
                         <TouchableOpacity
                           onPress={() => removerProduto(produto.id)}
                           style={styles.btnMinus}
+                          disabled={finalizando}
                         >
                           <Minus color={COLORS.white} size={16} />
                         </TouchableOpacity>
@@ -192,6 +263,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
                         <TouchableOpacity
                           onPress={() => adicionarProduto(produto)}
                           style={styles.btnPlus}
+                          disabled={finalizando}
                         >
                           <Plus color={COLORS.white} size={16} />
                         </TouchableOpacity>
@@ -200,7 +272,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
                       <TouchableOpacity
                         onPress={() => adicionarProduto(produto)}
                         style={styles.btnAdicionar}
-                        disabled={produto.estoque < 1}
+                        disabled={produto.estoque < 1 || finalizando}
                       >
                         <Text style={styles.btnAdicionarText}>
                           {produto.estoque < 1 ? 'Sem estoque' : '+ Adicionar'}
@@ -215,14 +287,12 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
             {produtosSelecionados.length > 0 && (
               <View style={styles.resumoProdutos}>
                 <Text style={styles.resumoTitle}>Produtos Selecionados</Text>
-                {produtosSelecionados.map(item => (
+                {produtosSelecionados.map((item) => (
                   <View key={item.produto_id} style={styles.resumoItem}>
                     <Text style={styles.resumoItemText}>
                       {item.nome} ({item.quantidade}x)
                     </Text>
-                    <Text style={styles.resumoItemValue}>
-                      R$ {item.subtotal.toFixed(2)}
-                    </Text>
+                    <Text style={styles.resumoItemValue}>R$ {item.subtotal.toFixed(2)}</Text>
                   </View>
                 ))}
                 <View style={styles.divider} />
@@ -235,19 +305,22 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
 
             <Text style={styles.sectionTitle}>Forma de Pagamento</Text>
             <View style={styles.formasPagamento}>
-              {formasPagamento.map(forma => (
+              {formasPagamento.map((forma) => (
                 <TouchableOpacity
                   key={forma}
                   onPress={() => setFormaPagamento(forma)}
                   style={[
                     styles.formaPagamentoButton,
-                    formaPagamento === forma && styles.formaPagamentoButtonActive
+                    formaPagamento === forma && styles.formaPagamentoButtonActive,
                   ]}
+                  disabled={finalizando}
                 >
-                  <Text style={[
-                    styles.formaPagamentoText,
-                    formaPagamento === forma && styles.formaPagamentoTextActive
-                  ]}>
+                  <Text
+                    style={[
+                      styles.formaPagamentoText,
+                      formaPagamento === forma && styles.formaPagamentoTextActive,
+                    ]}
+                  >
                     {forma}
                   </Text>
                 </TouchableOpacity>
@@ -264,15 +337,16 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
             <TouchableOpacity
               style={[styles.button, styles.buttonSecondary]}
               onPress={onClose}
+              disabled={finalizando}
             >
               <Text style={styles.buttonText}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.button, styles.buttonPrimary]}
+              style={[styles.button, styles.buttonPrimary, finalizando && styles.buttonDisabled]}
               onPress={handleFinalizar}
-              disabled={criandoVenda}
+              disabled={finalizando}
             >
-              {criandoVenda ? (
+              {finalizando ? (
                 <ActivityIndicator size="small" color={COLORS.background} />
               ) : (
                 <Text style={styles.buttonTextPrimary}>Finalizar</Text>
@@ -511,6 +585,9 @@ const styles = StyleSheet.create({
   },
   buttonPrimary: {
     backgroundColor: COLORS.gold,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     fontSize: 16,

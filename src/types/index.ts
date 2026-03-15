@@ -24,6 +24,7 @@ export interface Venda {
   data_hora: string;
   valor_total: number;
   valor_servico: number;
+  forma_pagamento?: string | null;
   produtos_vendidos: ProdutoVendido[];
   cliente_id?: string;
   created_at: string;
