@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ interface NovoLembreteModalProps {
 }
 
 export const NovoLembreteModal: React.FC<NovoLembreteModalProps> = ({ visible, onClose }) => {
+  const scrollViewRef = useRef<ScrollView>(null);
   const [clienteNome, setClienteNome] = useState('');
   const [clienteTelefone, setClienteTelefone] = useState('');
   const [clienteValido, setClienteValido] = useState(false);
@@ -90,6 +91,12 @@ export const NovoLembreteModal: React.FC<NovoLembreteModalProps> = ({ visible, o
     );
   };
 
+  const handleMensagemFocus = () => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 150);
+  };
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -102,6 +109,7 @@ export const NovoLembreteModal: React.FC<NovoLembreteModalProps> = ({ visible, o
           </View>
 
           <ScrollView
+            ref={scrollViewRef}
             style={styles.form}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -154,6 +162,7 @@ export const NovoLembreteModal: React.FC<NovoLembreteModalProps> = ({ visible, o
                 placeholderTextColor={COLORS.zinc600}
                 value={mensagem}
                 onChangeText={setMensagem}
+                onFocus={handleMensagemFocus}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
@@ -213,7 +222,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   formContent: {
-    paddingBottom: 120,
+    paddingBottom: 280,
   },
   inputGroup: {
     marginBottom: 20,
