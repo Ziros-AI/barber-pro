@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleProp, StyleSheet, Text, TextInput, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../api/supabaseClient';
@@ -16,6 +16,7 @@ interface ClienteAutocompleteFieldsProps {
   clienteTelefone: string;
   setClienteNome: (value: string) => void;
   setClienteTelefone: (value: string) => void;
+  onClienteValidoChange?: (isValid: boolean) => void;
   inputBackgroundColor: string;
   labelNome?: string;
   labelTelefone?: string;
@@ -46,11 +47,12 @@ export const ClienteAutocompleteFields: React.FC<ClienteAutocompleteFieldsProps>
   clienteTelefone,
   setClienteNome,
   setClienteTelefone,
+  onClienteValidoChange,
   inputBackgroundColor,
   labelNome = 'Nome do Cliente',
   labelTelefone = 'Telefone',
-  nomePlaceholder = 'Ex: João Silva',
-  telefonePlaceholder = 'Ex: 11999999999',
+  nomePlaceholder = 'Digite o nome do cliente',
+  telefonePlaceholder = 'Digite o telefone do cliente',
   inputGroupStyle,
   inputStyle,
   labelStyle,
@@ -85,6 +87,27 @@ export const ClienteAutocompleteFields: React.FC<ClienteAutocompleteFieldsProps>
       .filter((cliente) => cliente.nome.toLowerCase().includes(nomeBusca))
       .slice(0, 5);
   }, [clienteNome, clientes]);
+
+  const clienteSelecionado = useMemo(() => {
+    const nomeBusca = clienteNome.trim().toLowerCase();
+    const telefoneBusca = clienteTelefone.replace(/\D/g, '');
+
+    if (!nomeBusca || !telefoneBusca) {
+      return null;
+    }
+
+    return (
+      clientes.find(
+        (cliente) =>
+          cliente.nome.trim().toLowerCase() === nomeBusca &&
+          (cliente.telefone || '').replace(/\D/g, '').slice(0, 11) === telefoneBusca
+      ) || null
+    );
+  }, [clienteNome, clienteTelefone, clientes]);
+
+  useEffect(() => {
+    onClienteValidoChange?.(Boolean(clienteSelecionado));
+  }, [clienteSelecionado, onClienteValidoChange]);
 
   const handleClienteNomeChange = (value: string) => {
     setClienteNome(value);
@@ -139,6 +162,12 @@ export const ClienteAutocompleteFields: React.FC<ClienteAutocompleteFieldsProps>
             ))}
           </View>
         )}
+
+        {clienteNome.trim().length > 0 && clienteTelefone.trim().length > 0 && !clienteSelecionado && (
+          <Text style={styles.validationText}>
+            Selecione um cliente já cadastrado para continuar.
+          </Text>
+        )}
       </View>
 
       <View style={inputGroupStyle}>
@@ -189,5 +218,10 @@ const styles = StyleSheet.create({
   suggestionPhone: {
     color: COLORS.zinc400,
     marginTop: 4,
+  },
+  validationText: {
+    color: COLORS.red,
+    marginTop: 8,
+    fontSize: 12,
   },
 });

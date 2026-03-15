@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../api/supabaseClient';
+import { isValidPhone } from '../lib/utils';
 
 interface CreateClienteData {
   nome: string;
@@ -18,12 +19,18 @@ export const useCreateCliente = () => {
 
   return useMutation({
     mutationFn: async (data: CreateClienteData) => {
-      // Validar campos obrigatórios
       if (!data.nome) {
         throw new Error('Nome é obrigatório');
       }
 
-      // Validar formato email se fornecido
+      if (!data.telefone) {
+        throw new Error('Telefone é obrigatório');
+      }
+
+      if (!isValidPhone(data.telefone)) {
+        throw new Error('Telefone inválido. Informe um número com DDD.');
+      }
+
       if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
         throw new Error('Email inválido');
       }
@@ -32,7 +39,7 @@ export const useCreateCliente = () => {
         .from('clientes')
         .insert([{
           ...data,
-          frequencia_dias: data.frequencia_dias || 30 // Padrão: 30 dias
+          frequencia_dias: data.frequencia_dias || 30,
         }] as any)
         .select()
         .single() as any);
@@ -51,7 +58,10 @@ export const useUpdateCliente = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: {
+    mutationFn: async ({
+      id,
+      data,
+    }: {
       id: string;
       data: Partial<CreateClienteData>;
     }) => {

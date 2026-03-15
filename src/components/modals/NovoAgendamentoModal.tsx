@@ -5,6 +5,8 @@ import { COLORS } from '../../styles/colors';
 import { useCreateAgendamento, useUpdateAgendamento } from '../../hooks/useAgendamento';
 import { ClienteAutocompleteFields } from '../shared/ClienteAutocompleteFields';
 import { DateTimeField } from '../shared/DateTimeField';
+import { FormNotice } from '../shared/FormNotice';
+import { getHorarioAgendamentoMensagem, isHorarioAgendamentoValido } from '../../utils/agendamento';
 import type { Agendamento } from '../../types';
 
 interface NovoAgendamentoModalProps {
@@ -35,13 +37,16 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
 }) => {
   const [clienteNome, setClienteNome] = useState('');
   const [clienteTelefone, setClienteTelefone] = useState('');
+  const [clienteValido, setClienteValido] = useState(false);
   const [servico, setServico] = useState('');
   const [dataHora, setDataHora] = useState<Date>(() => getInitialDateTime(selectedDate, selectedHora));
+  const [feedback, setFeedback] = useState<{ title: string; message: string } | null>(null);
 
   const { mutate: criarAgendamento, isPending: isCreating } = useCreateAgendamento();
   const { mutate: atualizarAgendamento, isPending: isUpdating } = useUpdateAgendamento();
   const isEditing = Boolean(agendamento);
   const isPending = isCreating || isUpdating;
+  const horarioValido = isHorarioAgendamentoValido(dataHora);
 
   const servicos = ['Corte', 'Barba', 'Corte + Barba', 'Pigmentação', 'Design de Barba'];
 
@@ -53,20 +58,45 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
     if (agendamento) {
       setClienteNome(agendamento.cliente_nome);
       setClienteTelefone(agendamento.cliente_telefone);
+      setClienteValido(true);
       setServico(agendamento.servico);
       setDataHora(new Date(agendamento.data_hora));
+      setFeedback(null);
       return;
     }
 
     setClienteNome('');
     setClienteTelefone('');
+    setClienteValido(false);
     setServico('');
     setDataHora(getInitialDateTime(selectedDate, selectedHora));
+    setFeedback(null);
   }, [visible, selectedDate, selectedHora, agendamento]);
 
   const handleCriar = () => {
+    setFeedback(null);
+
     if (!clienteNome || !clienteTelefone || !servico) {
-      alert('Preencha todos os campos');
+      setFeedback({
+        title: 'Campos incompletos',
+        message: 'Preencha cliente, telefone e serviço antes de continuar.',
+      });
+      return;
+    }
+
+    if (!clienteValido) {
+      setFeedback({
+        title: 'Cliente não encontrado',
+        message: 'Selecione um cliente já cadastrado para salvar o agendamento.',
+      });
+      return;
+    }
+
+    if (!horarioValido) {
+      setFeedback({
+        title: 'Horário inválido',
+        message: getHorarioAgendamentoMensagem(),
+      });
       return;
     }
 
@@ -89,7 +119,10 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
           },
           onError: (error) => {
             console.error('Erro ao atualizar agendamento:', error);
-            alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+            setFeedback({
+              title: 'Não foi possível salvar',
+              message: error instanceof Error ? error.message : 'Tente novamente em instantes.',
+            });
           },
         }
       );
@@ -100,12 +133,17 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
       onSuccess: () => {
         setClienteNome('');
         setClienteTelefone('');
+        setClienteValido(false);
         setServico('');
+        setFeedback(null);
         onClose();
       },
       onError: (error) => {
         console.error('Erro ao criar agendamento:', error);
-        alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+        setFeedback({
+          title: 'Não foi possível criar',
+          message: error instanceof Error ? error.message : 'Tente novamente em instantes.',
+        });
       },
     });
   };
@@ -122,12 +160,15 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
           </View>
 
           <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+            {feedback && <FormNotice type="error" title={feedback.title} message={feedback.message} />}
+
             <ClienteAutocompleteFields
               visible={visible}
               clienteNome={clienteNome}
               clienteTelefone={clienteTelefone}
               setClienteNome={setClienteNome}
               setClienteTelefone={setClienteTelefone}
+              onClienteValidoChange={setClienteValido}
               inputBackgroundColor={COLORS.background}
               inputGroupStyle={styles.inputGroup}
               inputStyle={styles.input}
@@ -152,7 +193,6 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
             </View>
 
             <DateTimeField
-              label="Data e Hora"
               value={dataHora}
               onChange={setDataHora}
               inputBackgroundColor={COLORS.background}
@@ -163,13 +203,29 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
               pickerCardStyle={styles.pickerCard}
               pickerLabelStyle={styles.pickerLabel}
             />
+
+            {!horarioValido && (
+              <FormNotice
+                type="info"
+                title="Horário de atendimento"
+                message={getHorarioAgendamentoMensagem()}
+              />
+            )}
           </ScrollView>
 
           <View style={styles.actions}>
             <TouchableOpacity style={[styles.button, styles.buttonSecondary]} onPress={onClose}>
               <Text style={styles.buttonText}>Cancelar</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.button, styles.buttonPrimary]} onPress={handleCriar} disabled={isPending}>
+            <TouchableOpacity
+              style={[
+                styles.button,
+                styles.buttonPrimary,
+                (!clienteValido || isPending || !horarioValido) && styles.buttonPrimaryDisabled,
+              ]}
+              onPress={handleCriar}
+              disabled={isPending || !clienteValido || !horarioValido}
+            >
               {isPending ? (
                 <ActivityIndicator size="small" color={COLORS.background} />
               ) : (
@@ -292,6 +348,9 @@ const styles = StyleSheet.create({
   },
   buttonPrimary: {
     backgroundColor: COLORS.gold,
+  },
+  buttonPrimaryDisabled: {
+    opacity: 0.55,
   },
   buttonText: {
     color: COLORS.white,

@@ -24,3 +24,8 @@ export function formatPhone(phone: string): string {
   
   return phone;
 }
+
+export function isValidPhone(phone: string): boolean {
+  const cleaned = phone.replace(/\D/g, '');
+  return cleaned.length === 11;
+}

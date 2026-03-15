@@ -3,6 +3,8 @@ import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, Tex
 import { X } from 'lucide-react-native';
 import { COLORS } from '../../styles/colors';
 import { useCreateCliente } from '../../hooks/useCliente';
+import { formatPhoneNumber } from '../shared/ClienteAutocompleteFields';
+import { isValidPhone } from '../../lib/utils';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 
 interface NovoClienteModalProps {
@@ -16,17 +18,24 @@ export const NovoClienteModal: React.FC<NovoClienteModalProps> = ({ visible, onC
   const [telefone, setTelefone] = useState('');
 
   const { mutate: criarCliente, isPending } = useCreateCliente();
+  const telefoneValido = isValidPhone(telefone);
+  const camposObrigatoriosPreenchidos = nome.trim().length > 0 && telefoneValido;
 
   const handleCriar = () => {
-    if (!nome) {
-      alert('Preencha o nome do cliente');
+    if (!nome || !telefone) {
+      alert('Preencha o nome e o telefone do cliente');
+      return;
+    }
+
+    if (!telefoneValido) {
+      alert('Digite um telefone válido com DDD');
       return;
     }
 
     criarCliente({
       nome,
       email: email || '',
-      telefone: telefone || '',
+      telefone,
     }, {
       onSuccess: () => {
         setNome('');
@@ -64,7 +73,7 @@ export const NovoClienteModal: React.FC<NovoClienteModalProps> = ({ visible, onC
                 <Text style={styles.label}>Nome *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: João Silva"
+                  placeholder="Nome do cliente"
                   placeholderTextColor={COLORS.zinc600}
                   value={nome}
                   onChangeText={setNome}
@@ -75,7 +84,7 @@ export const NovoClienteModal: React.FC<NovoClienteModalProps> = ({ visible, onC
                 <Text style={styles.label}>Email</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: joao@email.com"
+                  placeholder="Email do cliente"
                   placeholderTextColor={COLORS.zinc600}
                   value={email}
                   onChangeText={setEmail}
@@ -84,15 +93,18 @@ export const NovoClienteModal: React.FC<NovoClienteModalProps> = ({ visible, onC
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Telefone</Text>
+                <Text style={styles.label}>Telefone *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: 11999999999"
+                  placeholder="Digite o telefone do cliente"
                   placeholderTextColor={COLORS.zinc600}
-                  value={telefone}
-                  onChangeText={setTelefone}
+                  value={formatPhoneNumber(telefone)}
+                  onChangeText={(value) => setTelefone(value.replace(/\D/g, '').slice(0, 11))}
                   keyboardType="phone-pad"
                 />
+                {telefone.length > 0 && !telefoneValido && (
+                  <Text style={styles.errorText}>Digite um telefone válido com DDD.</Text>
+                )}
               </View>
             </ScrollView>
 
@@ -105,9 +117,13 @@ export const NovoClienteModal: React.FC<NovoClienteModalProps> = ({ visible, onC
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.button, styles.buttonPrimary]}
+                style={[
+                  styles.button,
+                  styles.buttonPrimary,
+                  (!camposObrigatoriosPreenchidos || isPending) && styles.buttonPrimaryDisabled,
+                ]}
                 onPress={handleCriar}
-                disabled={isPending}
+                disabled={isPending || !camposObrigatoriosPreenchidos}
               >
                 {isPending ? (
                   <ActivityIndicator size="small" color={COLORS.background} />
@@ -170,6 +186,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.zinc800,
   },
+  errorText: {
+    color: COLORS.red,
+    marginTop: 8,
+    fontSize: 12,
+  },
   actions: {
     flexDirection: 'row',
     gap: 12,
@@ -190,6 +211,9 @@ const styles = StyleSheet.create({
   },
   buttonPrimary: {
     backgroundColor: COLORS.gold,
+  },
+  buttonPrimaryDisabled: {
+    opacity: 0.55,
   },
   buttonText: {
     color: COLORS.white,
