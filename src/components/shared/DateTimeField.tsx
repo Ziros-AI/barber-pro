@@ -5,7 +5,6 @@ import { format } from 'date-fns';
 import { COLORS } from '../../styles/colors';
 
 interface DateTimeFieldProps {
-  label: string;
   value: Date;
   onChange: (value: Date) => void;
   inputBackgroundColor: string;
@@ -19,7 +18,6 @@ interface DateTimeFieldProps {
 }
 
 export const DateTimeField: React.FC<DateTimeFieldProps> = ({
-  label,
   value,
   onChange,
   inputBackgroundColor,
@@ -31,45 +29,29 @@ export const DateTimeField: React.FC<DateTimeFieldProps> = ({
   pickerCardStyle,
   pickerLabelStyle,
 }) => {
-  const [showPicker, setShowPicker] = useState(false);
-  const [androidPickerMode, setAndroidPickerMode] = useState<'date' | 'time'>('date');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
-  const handleOpen = () => {
-    if (Platform.OS === 'android') {
-      setAndroidPickerMode('date');
-      setShowPicker(true);
-      return;
+  const handleOpenDate = () => {
+    setShowDatePicker((current) => !current);
+    if (Platform.OS !== 'android') {
+      setShowTimePicker(false);
     }
-
-    setShowPicker((current) => !current);
   };
 
-  const handleAndroidChange = (event: DateTimePickerEvent, selectedValue?: Date) => {
+  const handleOpenTime = () => {
+    setShowTimePicker((current) => !current);
+    if (Platform.OS !== 'android') {
+      setShowDatePicker(false);
+    }
+  };
+
+  const handleDateChange = (event: DateTimePickerEvent, selectedValue?: Date) => {
     if (event.type === 'dismissed') {
-      setShowPicker(false);
+      setShowDatePicker(false);
       return;
     }
 
-    if (!selectedValue) {
-      return;
-    }
-
-    if (androidPickerMode === 'date') {
-      const novaData = new Date(value);
-      novaData.setFullYear(selectedValue.getFullYear(), selectedValue.getMonth(), selectedValue.getDate());
-      onChange(novaData);
-      setAndroidPickerMode('time');
-      setShowPicker(true);
-      return;
-    }
-
-    const novaData = new Date(value);
-    novaData.setHours(selectedValue.getHours(), selectedValue.getMinutes(), 0, 0);
-    onChange(novaData);
-    setShowPicker(false);
-  };
-
-  const handleIOSDateChange = (_event: DateTimePickerEvent, selectedValue?: Date) => {
     if (!selectedValue) {
       return;
     }
@@ -77,9 +59,18 @@ export const DateTimeField: React.FC<DateTimeFieldProps> = ({
     const novaData = new Date(value);
     novaData.setFullYear(selectedValue.getFullYear(), selectedValue.getMonth(), selectedValue.getDate());
     onChange(novaData);
+
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
   };
 
-  const handleIOSTimeChange = (_event: DateTimePickerEvent, selectedValue?: Date) => {
+  const handleTimeChange = (event: DateTimePickerEvent, selectedValue?: Date) => {
+    if (event.type === 'dismissed') {
+      setShowTimePicker(false);
+      return;
+    }
+
     if (!selectedValue) {
       return;
     }
@@ -87,30 +78,70 @@ export const DateTimeField: React.FC<DateTimeFieldProps> = ({
     const novaData = new Date(value);
     novaData.setHours(selectedValue.getHours(), selectedValue.getMinutes(), 0, 0);
     onChange(novaData);
+
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
   };
 
   return (
     <View style={containerStyle}>
-      <Text style={labelStyle}>{label}</Text>
-      <TouchableOpacity
-        style={[styles.input, { backgroundColor: inputBackgroundColor, borderWidth: inputBorderWidth }, inputStyle]}
-        activeOpacity={0.85}
-        onPress={handleOpen}
-      >
-        <Text style={[styles.inputText, inputTextStyle]}>{format(value, 'dd/MM/yyyy HH:mm')}</Text>
-      </TouchableOpacity>
+      <View style={styles.row}>
+        <View style={styles.fieldColumn}>
+          <Text style={[styles.fieldLabel, labelStyle]}>Data</Text>
+          <TouchableOpacity
+            style={[
+              styles.input,
+              { backgroundColor: inputBackgroundColor, borderWidth: inputBorderWidth },
+              inputStyle,
+            ]}
+            activeOpacity={0.85}
+            onPress={handleOpenDate}
+          >
+            <Text style={[styles.inputText, inputTextStyle]}>{format(value, 'dd/MM/yyyy')}</Text>
+          </TouchableOpacity>
+        </View>
 
-      {showPicker && Platform.OS === 'android' && (
-        <DateTimePicker value={value} mode={androidPickerMode} is24Hour onChange={handleAndroidChange} />
+        <View style={styles.fieldColumn}>
+          <Text style={[styles.fieldLabel, labelStyle]}>Hora</Text>
+          <TouchableOpacity
+            style={[
+              styles.input,
+              { backgroundColor: inputBackgroundColor, borderWidth: inputBorderWidth },
+              inputStyle,
+            ]}
+            activeOpacity={0.85}
+            onPress={handleOpenTime}
+          >
+            <Text style={[styles.inputText, inputTextStyle]}>{format(value, 'HH:mm')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {showDatePicker && Platform.OS === 'android' && (
+        <DateTimePicker value={value} mode="date" onChange={handleDateChange} />
       )}
 
-      {showPicker && Platform.OS !== 'android' && (
+      {showTimePicker && Platform.OS === 'android' && (
+        <DateTimePicker value={value} mode="time" is24Hour onChange={handleTimeChange} />
+      )}
+
+      {showDatePicker && Platform.OS !== 'android' && (
         <View style={[styles.pickerCard, { backgroundColor: inputBackgroundColor }, pickerCardStyle]}>
           <Text style={[styles.pickerLabel, pickerLabelStyle]}>Selecione a data</Text>
-          <DateTimePicker value={value} mode="date" display="inline" onChange={handleIOSDateChange} />
+          <DateTimePicker value={value} mode="date" display="inline" onChange={handleDateChange} />
+        </View>
+      )}
 
-          <Text style={[styles.pickerLabel, pickerLabelStyle]}>Selecione o horário</Text>
-          <DateTimePicker value={value} mode="time" is24Hour onChange={handleIOSTimeChange} />
+      {showTimePicker && Platform.OS !== 'android' && (
+        <View style={[styles.pickerCard, { backgroundColor: inputBackgroundColor }, pickerCardStyle]}>
+          <DateTimePicker
+            value={value}
+            mode="time"
+            display="spinner"
+            is24Hour
+            onChange={handleTimeChange}
+          />
         </View>
       )}
     </View>
@@ -118,6 +149,19 @@ export const DateTimeField: React.FC<DateTimeFieldProps> = ({
 };
 
 const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  fieldColumn: {
+    flex: 1,
+  },
+  fieldLabel: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
   input: {
     borderRadius: 12,
     paddingHorizontal: 16,
