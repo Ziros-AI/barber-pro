@@ -215,6 +215,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.cardBg,
     paddingTop: 48,
     paddingBottom: 24,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
