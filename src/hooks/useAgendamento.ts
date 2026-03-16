@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../api/supabaseClient';
 import { format, addDays } from 'date-fns';
+import { supabase } from '../api/supabaseClient';
+import { getHorarioAgendamentoMensagem, isHorarioAgendamentoValido } from '../utils/agendamento';
 
 interface CreateAgendamentoData {
   data_hora: string;
@@ -29,10 +30,8 @@ export const useCreateAgendamento = () => {
 
   return useMutation({
     mutationFn: async (data: CreateAgendamentoData) => {
-      // Validar horários disponíveis (08:00 - 19:00)
-      const hora = new Date(data.data_hora).getHours();
-      if (hora < 8 || hora >= 19) {
-        throw new Error('Horário deve estar entre 08:00 e 19:00');
+      if (!isHorarioAgendamentoValido(data.data_hora)) {
+        throw new Error(getHorarioAgendamentoMensagem());
       }
 
       const { data: result, error } = await (supabase
@@ -40,7 +39,7 @@ export const useCreateAgendamento = () => {
         .insert([{
           ...data,
           status: data.status || 'pendente',
-          confirmado_whatsapp: false
+          confirmado_whatsapp: false,
         }] as any)
         .select()
         .single() as any);
@@ -59,10 +58,17 @@ export const useUpdateAgendamento = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: {
+    mutationFn: async ({
+      id,
+      data,
+    }: {
       id: string;
       data: Partial<CreateAgendamentoData>;
     }) => {
+      if (data.data_hora && !isHorarioAgendamentoValido(data.data_hora)) {
+        throw new Error(getHorarioAgendamentoMensagem());
+      }
+
       const { data: result, error } = await (supabase
         .from('agendamentos' as any)
         .update(data as any as never)
@@ -72,11 +78,10 @@ export const useUpdateAgendamento = () => {
 
       if (error) throw error;
 
-      // Se status mudou para 'confirmado', criar lembrete automático
       if (data.status === 'confirmado' && result) {
         const agendamento = result as Agendamento;
         const dataSemAviso = addDays(new Date(agendamento.data_hora), -1);
-        
+
         await (supabase
           .from('lembretes')
           .insert([{
@@ -84,7 +89,7 @@ export const useUpdateAgendamento = () => {
             cliente_nome: agendamento.cliente_nome,
             mensagem: `Confirmação de agendamento para ${format(new Date(agendamento.data_hora), 'dd/MM/yyyy HH:mm')}`,
             data_envio: dataSemAviso.toISOString(),
-            status: 'pendente'
+            status: 'pendente',
           }] as any)
           .select()
           .single() as any);

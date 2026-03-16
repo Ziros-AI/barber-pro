@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../api/supabaseClient';
+import { isValidPhone, mapClienteError, normalizeEmail } from '../lib/utils';
 
 interface CreateClienteData {
   nome: string;
@@ -13,31 +14,70 @@ interface Cliente extends CreateClienteData {
   created_at: string;
 }
 
+type ClientePayload = Omit<CreateClienteData, 'email'> & {
+  email: string | null;
+};
+
+const validateClienteData = (data: Partial<CreateClienteData>) => {
+  const payload: Partial<ClientePayload> = { ...data };
+
+  if (typeof payload.nome === 'string') {
+    payload.nome = payload.nome.trim();
+
+    if (!payload.nome) {
+      throw new Error('Nome e obrigatorio');
+    }
+  }
+
+  if (typeof payload.telefone === 'string') {
+    payload.telefone = payload.telefone.replace(/\D/g, '');
+
+    if (!payload.telefone) {
+      throw new Error('Telefone e obrigatorio');
+    }
+
+    if (!isValidPhone(payload.telefone)) {
+      throw new Error('Telefone invalido. Informe um numero com DDD.');
+    }
+  }
+
+  if (typeof payload.email === 'string') {
+    const normalizedEmail = normalizeEmail(payload.email);
+    payload.email = normalizedEmail.length > 0 ? normalizedEmail : null;
+
+    if (payload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+      throw new Error('Email invalido');
+    }
+  }
+
+  return payload;
+};
+
 export const useCreateCliente = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (data: CreateClienteData) => {
-      // Validar campos obrigatórios
-      if (!data.nome) {
-        throw new Error('Nome é obrigatório');
+      const payload = validateClienteData(data) as ClientePayload;
+
+      if (!payload.nome) {
+        throw new Error('Nome e obrigatorio');
       }
 
-      // Validar formato email se fornecido
-      if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-        throw new Error('Email inválido');
+      if (!payload.telefone) {
+        throw new Error('Telefone e obrigatorio');
       }
 
       const { data: result, error } = await (supabase
         .from('clientes')
         .insert([{
-          ...data,
-          frequencia_dias: data.frequencia_dias || 30 // Padrão: 30 dias
+          ...payload,
+          frequencia_dias: payload.frequencia_dias || 30,
         }] as any)
         .select()
         .single() as any);
 
-      if (error) throw error;
+      if (error) throw mapClienteError(error);
       return result;
     },
     onSuccess: () => {
@@ -51,18 +91,23 @@ export const useUpdateCliente = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: {
+    mutationFn: async ({
+      id,
+      data,
+    }: {
       id: string;
       data: Partial<CreateClienteData>;
     }) => {
+      const payload = validateClienteData(data);
+
       const { data: result, error } = await (supabase
         .from('clientes' as any)
-        .update(data as any as never)
+        .update(payload as any as never)
         .eq('id', id)
         .select()
         .single() as any);
 
-      if (error) throw error;
+      if (error) throw mapClienteError(error);
       return result;
     },
     onSuccess: () => {

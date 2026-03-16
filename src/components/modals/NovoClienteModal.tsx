@@ -3,6 +3,9 @@ import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, Tex
 import { X } from 'lucide-react-native';
 import { COLORS } from '../../styles/colors';
 import { useCreateCliente } from '../../hooks/useCliente';
+import { formatPhoneNumber } from '../shared/ClienteAutocompleteFields';
+import { isValidPhone } from '../../lib/utils';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 
 interface NovoClienteModalProps {
   visible: boolean;
@@ -15,17 +18,24 @@ export const NovoClienteModal: React.FC<NovoClienteModalProps> = ({ visible, onC
   const [telefone, setTelefone] = useState('');
 
   const { mutate: criarCliente, isPending } = useCreateCliente();
+  const telefoneValido = isValidPhone(telefone);
+  const camposObrigatoriosPreenchidos = nome.trim().length > 0 && telefoneValido;
 
   const handleCriar = () => {
-    if (!nome) {
-      alert('Preencha o nome do cliente');
+    if (!nome || !telefone) {
+      alert('Preencha o nome e o telefone do cliente');
+      return;
+    }
+
+    if (!telefoneValido) {
+      alert('Digite um telefone válido com DDD');
       return;
     }
 
     criarCliente({
       nome,
       email: email || '',
-      telefone: telefone || '',
+      telefone,
     }, {
       onSuccess: () => {
         setNome('');
@@ -42,73 +52,90 @@ export const NovoClienteModal: React.FC<NovoClienteModalProps> = ({ visible, onC
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Novo Cliente</Text>
-            <TouchableOpacity onPress={onClose}>
-              <X color={COLORS.white} size={24} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.content}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nome *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: João Silva"
-                placeholderTextColor={COLORS.zinc600}
-                value={nome}
-                onChangeText={setNome}
-              />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.overlay}>
+          <View style={styles.container}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Novo Cliente</Text>
+              <TouchableOpacity onPress={onClose}>
+                <X color={COLORS.white} size={24} />
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: joao@email.com"
-                placeholderTextColor={COLORS.zinc600}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Telefone</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: 11999999999"
-                placeholderTextColor={COLORS.zinc600}
-                value={telefone}
-                onChangeText={setTelefone}
-                keyboardType="phone-pad"
-              />
-            </View>
-          </ScrollView>
-
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.button, styles.buttonSecondary]}
-              onPress={onClose}
+            <ScrollView
+              style={styles.content}
+              keyboardShouldPersistTaps="handled"
             >
-              <Text style={styles.buttonText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.buttonPrimary]}
-              onPress={handleCriar}
-              disabled={isPending}
-            >
-              {isPending ? (
-                <ActivityIndicator size="small" color={COLORS.background} />
-              ) : (
-                <Text style={styles.buttonTextPrimary}>Criar</Text>
-              )}
-            </TouchableOpacity>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Nome *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Nome do cliente"
+                  placeholderTextColor={COLORS.zinc600}
+                  value={nome}
+                  onChangeText={setNome}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email do cliente"
+                  placeholderTextColor={COLORS.zinc600}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Telefone *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Digite o telefone do cliente"
+                  placeholderTextColor={COLORS.zinc600}
+                  value={formatPhoneNumber(telefone)}
+                  onChangeText={(value) => setTelefone(value.replace(/\D/g, '').slice(0, 11))}
+                  keyboardType="phone-pad"
+                />
+                {telefone.length > 0 && !telefoneValido && (
+                  <Text style={styles.errorText}>Digite um telefone válido com DDD.</Text>
+                )}
+              </View>
+            </ScrollView>
+
+            <View style={styles.actions}>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonSecondary]}
+                onPress={onClose}
+              >
+                <Text style={styles.buttonText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.buttonPrimary,
+                  (!camposObrigatoriosPreenchidos || isPending) && styles.buttonPrimaryDisabled,
+                ]}
+                onPress={handleCriar}
+                disabled={isPending || !camposObrigatoriosPreenchidos}
+              >
+                {isPending ? (
+                  <ActivityIndicator size="small" color={COLORS.background} />
+                ) : (
+                  <Text style={styles.buttonTextPrimary}>Criar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -159,6 +186,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.zinc800,
   },
+  errorText: {
+    color: COLORS.red,
+    marginTop: 8,
+    fontSize: 12,
+  },
   actions: {
     flexDirection: 'row',
     gap: 12,
@@ -179,6 +211,9 @@ const styles = StyleSheet.create({
   },
   buttonPrimary: {
     backgroundColor: COLORS.gold,
+  },
+  buttonPrimaryDisabled: {
+    opacity: 0.55,
   },
   buttonText: {
     color: COLORS.white,
