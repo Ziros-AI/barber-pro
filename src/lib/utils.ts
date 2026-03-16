@@ -48,3 +48,23 @@ export function getErrorMessage(error: unknown, fallback = 'Erro desconhecido'):
 
   return fallback;
 }
+
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+export function mapClienteError(error: unknown): Error {
+  if (typeof error === 'object' && error !== null) {
+    const supabaseError = error as { code?: unknown; message?: unknown };
+
+    if (
+      supabaseError.code === '23505' &&
+      typeof supabaseError.message === 'string' &&
+      supabaseError.message.includes('clientes_email_key')
+    ) {
+      return new Error('Ja existe um cliente cadastrado com este e-mail.');
+    }
+  }
+
+  return new Error(getErrorMessage(error, 'Nao foi possivel salvar o cliente.'));
+}
