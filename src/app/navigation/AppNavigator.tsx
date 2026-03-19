@@ -15,6 +15,7 @@ import CaixaScreen from '../../features/vendas/screens/CaixaScreen';
 import LembretesScreen from '../../screens/Lembretes';
 import ConfiguracoesScreen from '../../screens/Configuracoes';
 import LoginScreen from '../../screens/Login';
+import ProdutosScreen from '../../features/produtos/screens/ProdutosScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, ScrollView } from 'react-native';
 import { X } from 'lucide-react-native';
-import { COLORS } from '../../styles/colors';
-import { useCreateProduto } from '../../hooks/useProduto';
+import { COLORS } from '../../../styles/colors';
+import { useCreateProduto } from '../hooks/useProduto';
 
 interface NovoProdutoModalProps {
   visible: boolean;
