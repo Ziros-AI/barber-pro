@@ -15,6 +15,7 @@ import LembretesScreen from '../../features/lembretes/screens/LembretesScreen';
 import LoginScreen from '../../features/auth/screens/LoginScreen';
 import ConfiguracoesScreen from '../../features/configuracoes/screens/ConfiguracoesScreen';
 import ProdutosScreen from '../../features/produtos/screens/ProdutosScreen';
+import { ServicosScreen } from '../../features/configuracoes/servicos/screens';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -102,7 +103,10 @@ const AppNavigator = () => {
         {!isAuthenticated ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
-          <Stack.Screen name="Main" component={TabNavigator} />
+          <>
+            <Stack.Screen name="Main" component={TabNavigator} />
+            <Stack.Screen name="Servicos" component={ServicosScreen} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>
