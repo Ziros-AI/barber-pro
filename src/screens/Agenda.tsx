@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking, StyleSheet } from 'react-native';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, MessageCircle, Clock, Trash2 } from 'lucide-react-native';
 import { format, startOfDay, endOfDay, addDays, parseISO, isSameDay } from 'date-fns';
@@ -9,7 +9,7 @@ import { COLORS } from '../styles/colors';
 import { NovoAgendamentoModal } from '../components/modals/NovoAgendamentoModal';
 import { useDeleteAgendamento } from '../hooks/useAgendamento';
 import type { Agendamento } from '../types';
-import { useAlert } from '../contexts/AlertContext';
+import { useAlert } from '../app/providers/AlertProvider';
 
 const HORARIOS = [
   '08:00', '09:00', '10:00', '11:00', '12:00',

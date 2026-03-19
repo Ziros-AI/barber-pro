@@ -12,7 +12,7 @@ import {
 import { X, Trash2 } from 'lucide-react-native';
 import { COLORS } from '../../styles/colors';
 import { useDeleteCliente, useUpdateCliente } from '../../hooks/useCliente';
-import { useAlert } from '../../contexts/AlertContext';
+import { useAlert } from '../../app/providers/AlertProvider';
 
 interface ClienteData {
   id: string;

@@ -3,10 +3,10 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { useQuery } from '@tanstack/react-query';
 import { endOfDay, format, startOfDay } from 'date-fns';
 import { Check, CheckCircle2, DollarSign } from 'lucide-react-native';
-import { supabase } from '../api/supabaseClient';
-import { FinalizarVendaModal } from '../components/modals/FinalizarVendaModal';
-import { VendaDetalhesModal } from '../components/modals/VendaDetalhesModal';
-import { COLORS } from '../styles/colors';
+import { supabase } from '../../../services/api/supabaseClient';
+import { FinalizarVendaModal } from '../components/FinalizarVendaModal';
+import { VendaDetalhesModal } from '../components/VendaDetalhesModal';
+import { COLORS } from '../../../styles/colors';
 
 interface ProdutoVendido {
   nome?: string;
@@ -139,7 +139,6 @@ export default function CaixaScreen() {
                       <Check color={COLORS.white} size={20} />
                     </View>
                   </View>
-
                   <TouchableOpacity style={styles.finalizarButton} onPress={() => setAtendimentoSelecionado(agendamento)}>
                     <Text style={styles.finalizarButtonText}>Finalizar Atendimento</Text>
                   </TouchableOpacity>
@@ -196,11 +195,7 @@ export default function CaixaScreen() {
         />
       )}
 
-      <VendaDetalhesModal
-        visible={!!vendaSelecionada}
-        onClose={() => setVendaSelecionada(null)}
-        venda={vendaSelecionada}
-      />
+      <VendaDetalhesModal visible={!!vendaSelecionada} onClose={() => setVendaSelecionada(null)} venda={vendaSelecionada} />
     </>
   );
 }

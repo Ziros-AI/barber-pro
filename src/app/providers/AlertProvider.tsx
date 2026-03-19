@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AlertCircle, CheckCircle2, Info, TriangleAlert } from 'lucide-react-native';
-import { COLORS } from '../styles/colors';
+import { COLORS } from '../../styles/colors';
 
 type AlertVariant = 'success' | 'error' | 'info' | 'warning';
 

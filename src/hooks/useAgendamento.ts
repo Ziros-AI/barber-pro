@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, addDays } from 'date-fns';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import { getHorarioAgendamentoMensagem, isHorarioAgendamentoValido } from '../utils/agendamento';
 
 interface CreateAgendamentoData {

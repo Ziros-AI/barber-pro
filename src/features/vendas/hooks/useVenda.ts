@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../../../services/api/supabaseClient';
 
 export type FormaPagamento = 'Dinheiro' | 'PIX' | 'Cartão Débito' | 'Cartão Crédito';
 

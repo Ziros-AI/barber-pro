@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import { useQuery } from '@tanstack/react-query';
 import { DollarSign, TrendingUp, ShoppingBag, Users, AlertCircle, Clock, Check, Circle } from 'lucide-react-native';
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO, differenceInDays, format, isToday, isTomorrow } from 'date-fns';

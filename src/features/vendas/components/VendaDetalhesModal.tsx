@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { X } from 'lucide-react-native';
 import { format } from 'date-fns';
-import { COLORS } from '../../styles/colors';
+import { COLORS } from '../../../styles/colors';
 
 interface ProdutoVendido {
   nome?: string;
@@ -32,14 +32,8 @@ interface VendaDetalhesModalProps {
 
 const formatCurrency = (value: number) => `R$ ${value.toFixed(2)}`;
 
-export const VendaDetalhesModal: React.FC<VendaDetalhesModalProps> = ({
-  visible,
-  onClose,
-  venda
-}) => {
-  if (!venda) {
-    return null;
-  }
+export const VendaDetalhesModal: React.FC<VendaDetalhesModalProps> = ({ visible, onClose, venda }) => {
+  if (!venda) return null;
 
   const produtos = Array.isArray(venda.produtos_vendidos) ? venda.produtos_vendidos : [];
   const subtotalProdutos = produtos.reduce((sum, item) => sum + (item.subtotal || 0), 0);

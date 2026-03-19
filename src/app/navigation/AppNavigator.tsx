@@ -5,16 +5,16 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Calendar, Users, DollarSign, LayoutDashboard, Settings, Bell } from 'lucide-react-native';
 import { View, ActivityIndicator } from 'react-native';
 
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../providers/AuthProvider';
 
 // Screens
-import DashboardScreen from '../screens/Dashboard';
-import AgendaScreen from '../screens/Agenda';
-import ClientesScreen from '../screens/Clientes';
-import CaixaScreen from '../screens/Caixa';
-import LembretesScreen from '../screens/Lembretes';
-import ConfiguracoesScreen from '../screens/Configuracoes';
-import LoginScreen from '../screens/Login';
+import DashboardScreen from '../../screens/Dashboard';
+import AgendaScreen from '../../screens/Agenda';
+import ClientesScreen from '../../screens/Clientes';
+import CaixaScreen from '../../features/vendas/screens/CaixaScreen';
+import LembretesScreen from '../../screens/Lembretes';
+import ConfiguracoesScreen from '../../screens/Configuracoes';
+import LoginScreen from '../../screens/Login';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import { useQuery } from '@tanstack/react-query';
 import { Package, DollarSign, Plus } from 'lucide-react-native';
 import { COLORS } from '../styles/colors';

@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { Minus, Plus, X } from 'lucide-react-native';
-import { FormaPagamento } from '../../hooks/useVenda';
-import { getErrorMessage } from '../../lib/utils';
-import { supabase } from '../../api/supabaseClient';
-import { COLORS } from '../../styles/colors';
-import { useAlert } from '../../contexts/AlertContext';
+import { FormaPagamento } from '../hooks/useVenda';
+import { getErrorMessage } from '../../../lib/utils';
+import { supabase } from '../../../services/api/supabaseClient';
+import { COLORS } from '../../../styles/colors';
+import { useAlert } from '../../../app/providers/AlertProvider';
 
 interface Agendamento {
   id: string;
@@ -39,12 +39,7 @@ interface FinalizarVendaModalProps {
   produtos: Produto[];
 }
 
-export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
-  visible,
-  onClose,
-  agendamento,
-  produtos
-}) => {
+export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({ visible, onClose, agendamento, produtos }) => {
   const [produtosSelecionados, setProdutosSelecionados] = useState<ProdutoSelecionado[]>([]);
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('Dinheiro');
   const [finalizando, setFinalizando] = useState(false);
@@ -281,9 +276,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
                 <Text style={styles.resumoTitle}>Produtos Selecionados</Text>
                 {produtosSelecionados.map((item) => (
                   <View key={item.produto_id} style={styles.resumoItem}>
-                    <Text style={styles.resumoItemText}>
-                      {item.nome} ({item.quantidade}x)
-                    </Text>
+                    <Text style={styles.resumoItemText}>{item.nome} ({item.quantidade}x)</Text>
                     <Text style={styles.resumoItemValue}>R$ {item.subtotal.toFixed(2)}</Text>
                   </View>
                 ))}

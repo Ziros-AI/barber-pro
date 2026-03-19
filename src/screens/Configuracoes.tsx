@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, StyleSheet, Switch } from 'react-native';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../services/api/supabaseClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, Save } from 'lucide-react-native';
 import { COLORS } from '../styles/colors';
-import { useAlert } from '../contexts/AlertContext';
+import { useAlert } from '../app/providers/AlertProvider';
 
 interface Configuracao {
   id?: string;
