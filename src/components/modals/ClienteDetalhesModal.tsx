@@ -8,11 +8,11 @@ import {
   ActivityIndicator,
   TextInput,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { X, Trash2 } from 'lucide-react-native';
 import { COLORS } from '../../styles/colors';
 import { useDeleteCliente, useUpdateCliente } from '../../hooks/useCliente';
+import { useAlert } from '../../contexts/AlertContext';
 
 interface ClienteData {
   id: string;
@@ -40,6 +40,7 @@ export const ClienteDetalhesModal: React.FC<ClienteDetalhesModalProps> = ({
 
   const { mutate: atualizarCliente, isPending: isUpdating } = useUpdateCliente();
   const { mutate: excluirCliente, isPending: isDeleting } = useDeleteCliente();
+  const { showAlert, showConfirm } = useAlert();
 
   const isPending = isUpdating || isDeleting;
 
@@ -57,13 +58,13 @@ export const ClienteDetalhesModal: React.FC<ClienteDetalhesModalProps> = ({
   const handleSalvar = () => {
     if (!cliente) return;
     if (!nome.trim()) {
-      Alert.alert('Campo obrigatório', 'Preencha o nome do cliente.');
+      showAlert('Campo obrigatório', 'Preencha o nome do cliente.', 'warning');
       return;
     }
 
     const frequenciaNumerica = Number(frequenciaDias);
     if (!Number.isFinite(frequenciaNumerica) || frequenciaNumerica <= 0) {
-      Alert.alert('Frequência inválida', 'Informe uma frequência em dias maior que zero.');
+      showAlert('Frequência inválida', 'Informe uma frequência em dias maior que zero.', 'warning');
       return;
     }
 
@@ -79,12 +80,12 @@ export const ClienteDetalhesModal: React.FC<ClienteDetalhesModalProps> = ({
       },
       {
         onSuccess: () => {
-          Alert.alert('Sucesso', 'Cliente atualizado com sucesso.');
+          showAlert('Sucesso', 'Cliente atualizado com sucesso.', 'success');
           onClose();
         },
         onError: (error) => {
           const message = error instanceof Error ? error.message : 'Erro ao atualizar cliente.';
-          Alert.alert('Erro', message);
+          showAlert('Erro', message, 'error');
         },
       }
     );
@@ -93,7 +94,7 @@ export const ClienteDetalhesModal: React.FC<ClienteDetalhesModalProps> = ({
   const confirmarExclusao = () => {
     if (!cliente) return;
 
-    Alert.alert(
+    showConfirm(
       'Excluir cliente',
       `Tem certeza que deseja excluir ${cliente.nome}? Essa ação não pode ser desfeita.`,
       [
@@ -104,13 +105,13 @@ export const ClienteDetalhesModal: React.FC<ClienteDetalhesModalProps> = ({
           onPress: () => {
             excluirCliente(cliente.id, {
               onSuccess: () => {
-                Alert.alert('Cliente removido', 'Cliente excluído com sucesso.');
+                showAlert('Cliente removido', 'Cliente excluído com sucesso.', 'success');
                 onClose();
               },
               onError: (error) => {
                 const message =
                   error instanceof Error ? error.message : 'Erro ao excluir cliente.';
-                Alert.alert('Erro', message);
+                showAlert('Erro', message, 'error');
               },
             });
           },

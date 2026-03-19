@@ -9,12 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   Animated,
 } from 'react-native';
 import { Scissors, Mail, Lock } from 'lucide-react-native';
 import { COLORS } from '../styles/colors';
 import { useAuth } from '../contexts/AuthContext';
+import { useAlert } from '../contexts/AlertContext';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -25,6 +25,7 @@ export default function LoginScreen() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const { signIn, signUp } = useAuth();
+  const { showAlert } = useAlert();
 
   const validateEmail = (text: string) => {
     setEmail(text);
@@ -69,7 +70,7 @@ export default function LoginScreen() {
     try {
       if (isSignUp) {
         await signUp(email, password);
-        Alert.alert('Sucesso! 🎉', 'Conta criada com sucesso! Faça login agora.');
+        showAlert('Sucesso', 'Conta criada com sucesso! Faça login agora.', 'success');
         setEmail('');
         setPassword('');
         setIsSignUp(false);
@@ -79,7 +80,7 @@ export default function LoginScreen() {
     } catch (error: any) {
       const errorMessage = error.message || 'Falha na autenticação';
       setError(errorMessage);
-      Alert.alert('Erro de Autenticação', errorMessage);
+      showAlert('Erro de Autenticação', errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }

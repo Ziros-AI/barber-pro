@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { supabase } from '../api/supabaseClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, Check, Clock, Send, Plus } from 'lucide-react-native';
@@ -7,10 +7,12 @@ import { format, parseISO, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { COLORS } from '../styles/colors';
 import { NovoLembreteModal } from '../components/modals/NovoLembreteModal';
+import { useAlert } from '../contexts/AlertContext';
 
 export default function LembretesScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const queryClient = useQueryClient();
+  const { showAlert } = useAlert();
   
   const { data: lembretes = [], isLoading } = useQuery({
     queryKey: ['lembretes'],
@@ -44,7 +46,7 @@ export default function LembretesScreen() {
     const mensagem = encodeURIComponent(lembrete.mensagem || 'Lembrete de agendamento');
     
     if (!telefone) {
-      Alert.alert('Erro', 'Telefone não encontrado');
+      showAlert('Erro', 'Telefone não encontrado', 'error');
       return;
     }
 
@@ -53,7 +55,7 @@ export default function LembretesScreen() {
     Linking.openURL(url).then(() => {
       marcarComoEnviado.mutate(lembrete.id);
     }).catch(() => {
-      Alert.alert('Erro', 'Não foi possível abrir o WhatsApp');
+      showAlert('Erro', 'Não foi possível abrir o WhatsApp', 'error');
     });
   };
 

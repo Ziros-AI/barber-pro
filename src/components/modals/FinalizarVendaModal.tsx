@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
-import { X, Plus, Minus, Check, CheckCircle2 } from 'lucide-react-native';
-import { COLORS } from '../../styles/colors';
-import { FormaPagamento } from '../../hooks/useVenda';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
+import { Minus, Plus, X } from 'lucide-react-native';
+import { FormaPagamento } from '../../hooks/useVenda';
 import { getErrorMessage } from '../../lib/utils';
 import { supabase } from '../../api/supabaseClient';
+import { COLORS } from '../../styles/colors';
+import { useAlert } from '../../contexts/AlertContext';
 
 interface Agendamento {
   id: string;
@@ -49,6 +50,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
   const [finalizando, setFinalizando] = useState(false);
 
   const queryClient = useQueryClient();
+  const { showAlert, showConfirm } = useAlert();
 
   const valorServico = agendamento.valor || 50;
   const valorProdutos = produtosSelecionados.reduce((sum, p) => sum + p.subtotal, 0);
@@ -59,7 +61,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
 
     if (existente) {
       if (existente.quantidade >= produto.estoque) {
-        Alert.alert('Estoque insuficiente', `Disponível: ${produto.estoque} unidades`);
+        showAlert('Estoque insuficiente', `Disponivel: ${produto.estoque} unidades`, 'warning');
         return;
       }
 
@@ -69,7 +71,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
             ? {
                 ...item,
                 quantidade: item.quantidade + 1,
-                subtotal: (item.quantidade + 1) * item.preco,
+                subtotal: (item.quantidade + 1) * item.preco
               }
             : item
         )
@@ -78,7 +80,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
     }
 
     if (produto.estoque < 1) {
-      Alert.alert('Sem estoque', 'Este produto está sem estoque');
+      showAlert('Sem estoque', 'Este produto esta sem estoque', 'warning');
       return;
     }
 
@@ -89,8 +91,8 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
         nome: produto.nome,
         quantidade: 1,
         preco: produto.preco,
-        subtotal: produto.preco,
-      },
+        subtotal: produto.preco
+      }
     ]);
   };
 
@@ -105,7 +107,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
             ? {
                 ...item,
                 quantidade: item.quantidade - 1,
-                subtotal: (item.quantidade - 1) * item.preco,
+                subtotal: (item.quantidade - 1) * item.preco
               }
             : item
         )
@@ -147,7 +149,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
         const produtoAtual = produtos.find((produto) => produto.id === item.produto_id);
 
         if (!produtoAtual) {
-          throw new Error(`Produto não encontrado: ${item.nome}`);
+          throw new Error(`Produto nao encontrado: ${item.nome}`);
         }
 
         if (produtoAtual.estoque < item.quantidade) {
@@ -168,8 +170,8 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
           nome: item.nome,
           quantidade: item.quantidade,
           preco_unitario: item.preco,
-          subtotal: item.subtotal,
-        })),
+          subtotal: item.subtotal
+        }))
       } as never);
 
       if (error) {
@@ -182,21 +184,27 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
         queryClient.invalidateQueries({ queryKey: ['produtos'] }),
         queryClient.invalidateQueries({ queryKey: ['vendas'] }),
         queryClient.invalidateQueries({ queryKey: ['vendas-hoje'] }),
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       ]);
 
-      Alert.alert('Sucesso', `Venda finalizada com sucesso via ${formaPagamento}!`);
       setProdutosSelecionados([]);
       setFormaPagamento('Dinheiro');
-      onClose();
-    } catch (error) {
-      Alert.alert(
-        'Erro',
-        `Não foi possível finalizar a venda: ${getErrorMessage(error)}`
+      showConfirm(
+        'Venda finalizada',
+        `Pagamento confirmado via ${formaPagamento}. O historico e o caixa ja foram atualizados.`,
+        [
+          {
+            text: 'Continuar',
+            onPress: onClose
+          }
+        ],
+        'success'
       );
+    } catch (error) {
+      showAlert('Nao foi possivel finalizar', getErrorMessage(error), 'error');
+    } finally {
+      setFinalizando(false);
     }
-
-    setFinalizando(false);
   };
 
   const formasPagamento: FormaPagamento[] = ['Dinheiro', 'PIX', 'Cartão Débito', 'Cartão Crédito'];
@@ -217,7 +225,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
 
           <ScrollView style={styles.content}>
             <View style={styles.valorServicoCard}>
-              <Text style={styles.valorServicoLabel}>Serviço</Text>
+              <Text style={styles.valorServicoLabel}>Servico</Text>
               <Text style={styles.valorServicoValue}>R$ {valorServico.toFixed(2)}</Text>
             </View>
 
@@ -295,14 +303,14 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
                   onPress={() => setFormaPagamento(forma)}
                   style={[
                     styles.formaPagamentoButton,
-                    formaPagamento === forma && styles.formaPagamentoButtonActive,
+                    formaPagamento === forma && styles.formaPagamentoButtonActive
                   ]}
                   disabled={finalizando}
                 >
                   <Text
                     style={[
                       styles.formaPagamentoText,
-                      formaPagamento === forma && styles.formaPagamentoTextActive,
+                      formaPagamento === forma && styles.formaPagamentoTextActive
                     ]}
                   >
                     {forma}
@@ -347,33 +355,33 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-end'
   },
   container: {
     backgroundColor: COLORS.cardBg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 24,
-    maxHeight: '90%',
+    maxHeight: '90%'
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 20
   },
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: COLORS.white,
+    color: COLORS.white
   },
   subtitle: {
     fontSize: 14,
-    color: COLORS.zinc400,
+    color: COLORS.zinc400
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 20
   },
   valorServicoCard: {
     backgroundColor: COLORS.background,
@@ -382,55 +390,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 20
   },
   valorServicoLabel: {
     fontSize: 16,
-    color: COLORS.zinc400,
+    color: COLORS.zinc400
   },
   valorServicoValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: COLORS.white,
+    color: COLORS.white
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.white,
-    marginBottom: 12,
+    marginBottom: 12
   },
   produtosGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 20
   },
   produtoCard: {
     backgroundColor: COLORS.background,
     borderRadius: 12,
     padding: 12,
-    width: '48%',
+    width: '48%'
   },
   produtoNome: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.white,
-    marginBottom: 4,
+    marginBottom: 4
   },
   produtoPreco: {
     fontSize: 14,
     color: COLORS.gold,
-    marginBottom: 2,
+    marginBottom: 2
   },
   produtoEstoque: {
     fontSize: 12,
     color: COLORS.zinc500,
-    marginBottom: 8,
+    marginBottom: 8
   },
   quantidadeControl: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between'
   },
   btnMinus: {
     backgroundColor: '#dc2626',
@@ -438,12 +446,12 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 8,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   quantidade: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.white,
+    color: COLORS.white
   },
   btnPlus: {
     backgroundColor: '#16a34a',
@@ -451,64 +459,64 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 8,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   btnAdicionar: {
     backgroundColor: COLORS.zinc800,
     paddingVertical: 6,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   btnAdicionarText: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.white,
+    color: COLORS.white
   },
   resumoProdutos: {
     backgroundColor: COLORS.background,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 20,
+    marginBottom: 20
   },
   resumoTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.white,
-    marginBottom: 12,
+    marginBottom: 12
   },
   resumoItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 8
   },
   resumoItemText: {
     fontSize: 14,
-    color: COLORS.zinc400,
+    color: COLORS.zinc400
   },
   resumoItemValue: {
     fontSize: 14,
     color: COLORS.white,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   divider: {
     height: 1,
     backgroundColor: COLORS.zinc700,
-    marginVertical: 12,
+    marginVertical: 12
   },
   resumoLabel: {
     fontSize: 14,
-    color: COLORS.zinc400,
+    color: COLORS.zinc400
   },
   resumoValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.gold,
+    color: COLORS.gold
   },
   formasPagamento: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 20
   },
   formaPagamentoButton: {
     backgroundColor: COLORS.background,
@@ -516,19 +524,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: COLORS.zinc700,
+    borderColor: COLORS.zinc700
   },
   formaPagamentoButtonActive: {
     borderColor: COLORS.gold,
-    backgroundColor: `${COLORS.gold}20`,
+    backgroundColor: `${COLORS.gold}20`
   },
   formaPagamentoText: {
     fontSize: 14,
     color: COLORS.zinc400,
-    fontWeight: '600',
+    fontWeight: '600'
   },
   formaPagamentoTextActive: {
-    color: COLORS.gold,
+    color: COLORS.gold
   },
   totalCard: {
     backgroundColor: COLORS.gold,
@@ -537,17 +545,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 20
   },
   totalLabel: {
     fontSize: 18,
     fontWeight: '900',
-    color: COLORS.background,
+    color: COLORS.background
   },
   totalValue: {
     fontSize: 28,
     fontWeight: '900',
-    color: COLORS.background,
+    color: COLORS.background
   },
   actions: {
     flexDirection: 'row',
@@ -555,32 +563,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: COLORS.zinc800,
+    borderTopColor: COLORS.zinc800
   },
   button: {
     flex: 1,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
   buttonSecondary: {
-    backgroundColor: COLORS.zinc800,
+    backgroundColor: COLORS.zinc800
   },
   buttonPrimary: {
-    backgroundColor: COLORS.gold,
+    backgroundColor: COLORS.gold
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.6
   },
   buttonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.white,
+    color: COLORS.white
   },
   buttonTextPrimary: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.background,
-  },
+    color: COLORS.background
+  }
 });

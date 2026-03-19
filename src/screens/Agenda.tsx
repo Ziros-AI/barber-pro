@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking, StyleSheet } from 'react-native';
 import { supabase } from '../api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, MessageCircle, Clock, Trash2 } from 'lucide-react-native';
@@ -9,6 +9,7 @@ import { COLORS } from '../styles/colors';
 import { NovoAgendamentoModal } from '../components/modals/NovoAgendamentoModal';
 import { useDeleteAgendamento } from '../hooks/useAgendamento';
 import type { Agendamento } from '../types';
+import { useAlert } from '../contexts/AlertContext';
 
 const HORARIOS = [
   '08:00', '09:00', '10:00', '11:00', '12:00',
@@ -22,6 +23,7 @@ export default function AgendaScreen() {
   const [selectedAgendamento, setSelectedAgendamento] = useState<Agendamento | null>(null);
   const queryClient = useQueryClient();
   const { mutate: excluirAgendamento } = useDeleteAgendamento();
+  const { showAlert, showConfirm } = useAlert();
 
   const { data: agendamentos = [], isLoading } = useQuery<Agendamento[]>({
     queryKey: ['agendamentos', format(selectedDate, 'yyyy-MM-dd')],
@@ -110,13 +112,13 @@ export default function AgendaScreen() {
   };
 
   const handleExcluirAgendamento = (agendamento: Agendamento) => {
-    Alert.alert(
+    showConfirm(
       'Excluir agendamento',
       `Deseja excluir o agendamento de ${agendamento.cliente_nome} às ${format(parseISO(agendamento.data_hora), 'HH:mm')}?`,
       [
         {
           text: 'Cancelar',
-          style: 'cancel',
+          style: 'cancel'
         },
         {
           text: 'Excluir',
@@ -125,11 +127,11 @@ export default function AgendaScreen() {
             excluirAgendamento(agendamento.id, {
               onError: (error) => {
                 console.error('Erro ao excluir agendamento:', error);
-                Alert.alert('Erro', 'Não foi possível excluir o agendamento.');
-              },
+                showAlert('Erro', 'Não foi possível excluir o agendamento.', 'error');
+              }
             });
-          },
-        },
+          }
+        }
       ]
     );
   };

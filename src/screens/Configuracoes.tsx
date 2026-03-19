@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, StyleSheet, Switch, Alert } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, StyleSheet, Switch } from 'react-native';
 import { supabase } from '../api/supabaseClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, Save } from 'lucide-react-native';
 import { COLORS } from '../styles/colors';
+import { useAlert } from '../contexts/AlertContext';
 
 interface Configuracao {
   id?: string;
@@ -18,6 +19,7 @@ interface Configuracao {
 
 export default function ConfiguracoesScreen() {
   const queryClient = useQueryClient();
+  const { showAlert } = useAlert();
   
   const { data: configs = [], isLoading } = useQuery({
     queryKey: ['configuracoes'],
@@ -72,10 +74,14 @@ export default function ConfiguracoesScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configuracoes'] });
-      Alert.alert('Sucesso', 'Configurações salvas com sucesso!');
+      showAlert('Sucesso', 'Configurações salvas com sucesso!', 'success');
     },
     onError: (error) => {
-      Alert.alert('Erro', `Não foi possível salvar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      showAlert(
+        'Erro',
+        `Não foi possível salvar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        'error'
+      );
     }
   });
 
