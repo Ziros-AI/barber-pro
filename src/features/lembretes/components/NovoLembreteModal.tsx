@@ -10,11 +10,11 @@ import {
   ScrollView,
 } from 'react-native';
 import { X } from 'lucide-react-native';
-import { COLORS } from '../../styles/colors';
-import { useCreateLembrete } from '../../hooks/useLembrete';
-import { ClienteAutocompleteFields } from '../shared/ClienteAutocompleteFields';
-import { DateTimeField } from '../shared/DateTimeField';
-import { FormNotice } from '../shared/FormNotice';
+import { COLORS } from '../../../styles/colors';
+import { useCreateLembrete } from '../hooks/useLembrete';
+import { ClienteAutocompleteFields } from '../../../components/shared/ClienteAutocompleteFields';
+import { DateTimeField } from '../../../components/shared/DateTimeField';
+import { FormNotice } from '../../../components/shared/FormNotice';
 
 interface NovoLembreteModalProps {
   visible: boolean;

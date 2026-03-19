@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, StyleSheet, Linking } from 'react-native';
-import { supabase } from '../services/api/supabaseClient';
+import { supabase } from '../../../services/api/supabaseClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, Check, Clock, Send, Plus } from 'lucide-react-native';
 import { format, parseISO, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { COLORS } from '../styles/colors';
-import { NovoLembreteModal } from '../components/modals/NovoLembreteModal';
-import { useAlert } from '../app/providers/AlertProvider';
+import { COLORS } from '../../../styles/colors';
+import { NovoLembreteModal } from '../components/NovoLembreteModal';
+import { useAlert } from '../../../app/providers/AlertProvider';
 
 export default function LembretesScreen() {
   const [modalVisible, setModalVisible] = useState(false);

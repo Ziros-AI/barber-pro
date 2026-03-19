@@ -12,7 +12,7 @@ import DashboardScreen from '../../screens/Dashboard';
 import AgendaScreen from '../../features/agenda/screens/AgendaScreen';
 import ClientesScreen from '../../features/clientes/screens/ClientesScreen';
 import CaixaScreen from '../../features/vendas/screens/CaixaScreen';
-import LembretesScreen from '../../screens/Lembretes';
+import LembretesScreen from '../../features/lembretes/screens/LembretesScreen';
 import ConfiguracoesScreen from '../../screens/Configuracoes';
 import LoginScreen from '../../screens/Login';
 import ProdutosScreen from '../../features/produtos/screens/ProdutosScreen';
