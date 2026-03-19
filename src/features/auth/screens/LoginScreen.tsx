@@ -12,9 +12,9 @@ import {
   Animated,
 } from 'react-native';
 import { Scissors, Mail, Lock } from 'lucide-react-native';
-import { COLORS } from '../styles/colors';
-import { useAuth } from '../app/providers/AuthProvider';
-import { useAlert } from '../app/providers/AlertProvider';
+import { COLORS } from '../../../styles/colors';
+import { useAuth } from '../../../app/providers/AuthProvider';
+import { useAlert } from '../../../app/providers/AlertProvider';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');

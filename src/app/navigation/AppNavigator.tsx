@@ -13,8 +13,8 @@ import AgendaScreen from '../../features/agenda/screens/AgendaScreen';
 import ClientesScreen from '../../features/clientes/screens/ClientesScreen';
 import CaixaScreen from '../../features/vendas/screens/CaixaScreen';
 import LembretesScreen from '../../features/lembretes/screens/LembretesScreen';
+import LoginScreen from '../../features/auth/screens/LoginScreen';
 import ConfiguracoesScreen from '../../screens/Configuracoes';
-import LoginScreen from '../../screens/Login';
 import ProdutosScreen from '../../features/produtos/screens/ProdutosScreen';
 
 const Tab = createBottomTabNavigator();
