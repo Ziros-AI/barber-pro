@@ -9,16 +9,28 @@ import { FinalizarVendaModal } from '../components/modals/FinalizarVendaModal';
 
 export default function CaixaScreen() {
   const [atendimentoSelecionado, setAtendimentoSelecionado] = useState<any>(null);
-  const hoje = new Date();
 
-  const { data: agendamentos = [], isLoading: loadingAgendamentos, refetch: refetchAgendamentos } = useQuery({
+  const { data: agendamentos = [], isLoading: loadingAgendamentos } = useQuery({
     queryKey: ['agendamentos-hoje-confirmados'],
     queryFn: async () => {
+      const agora = new Date();
+      const inicioDoDia = startOfDay(agora).toISOString();
+      const horarioAtual = agora.toISOString();
+
+      const { error: errorAtualizacao } = await supabase
+        .from('agendamentos')
+        .update({ status: 'confirmado' })
+        .gte('data_hora', inicioDoDia)
+        .lte('data_hora', horarioAtual)
+        .eq('status', 'pendente');
+
+      if (errorAtualizacao) throw errorAtualizacao;
+
       const { data, error } = await supabase
         .from('agendamentos')
         .select('*')
-        .gte('data_hora', startOfDay(hoje).toISOString())
-        .lte('data_hora', endOfDay(hoje).toISOString())
+        .gte('data_hora', inicioDoDia)
+        .lte('data_hora', horarioAtual)
         .eq('status', 'confirmado')
         .order('data_hora', { ascending: true });
       
@@ -44,6 +56,8 @@ export default function CaixaScreen() {
   const { data: vendas = [], isLoading: loadingVendas } = useQuery({
     queryKey: ['vendas-hoje'],
     queryFn: async () => {
+      const hoje = new Date();
+
       const { data, error } = await supabase
         .from('vendas')
         .select('*')
@@ -73,7 +87,7 @@ export default function CaixaScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Caixa</Text>
-        <Text style={styles.subtitle}>Finalize os atendimentos de hoje</Text>
+        <Text style={styles.subtitle}>Finalize os atendimentos de hoje ate o horario atual</Text>
       </View>
 
       <View style={styles.content}>

@@ -66,6 +66,7 @@ export interface Database {
           data_hora: string;
           valor_total: number;
           valor_servico: number;
+          forma_pagamento: string | null;
           produtos_vendidos: any;
           cliente_id: string | null;
           created_at: string;
@@ -76,6 +77,7 @@ export interface Database {
           data_hora: string;
           valor_total: number;
           valor_servico: number;
+          forma_pagamento?: string | null;
           produtos_vendidos?: any;
           cliente_id?: string | null;
           created_at?: string;
@@ -86,6 +88,7 @@ export interface Database {
           data_hora?: string;
           valor_total?: number;
           valor_servico?: number;
+          forma_pagamento?: string | null;
           produtos_vendidos?: any;
           cliente_id?: string | null;
           updated_at?: string;

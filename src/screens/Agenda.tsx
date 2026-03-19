@@ -1,20 +1,29 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking, StyleSheet, Alert } from 'react-native';
 import { supabase } from '../api/supabaseClient';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MessageCircle, Clock } from 'lucide-react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, MessageCircle, Clock, Trash2 } from 'lucide-react-native';
 import { format, startOfDay, endOfDay, addDays, parseISO, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { COLORS } from '../styles/colors';
 import { NovoAgendamentoModal } from '../components/modals/NovoAgendamentoModal';
+import { useDeleteAgendamento } from '../hooks/useAgendamento';
+import type { Agendamento } from '../types';
+
+const HORARIOS = [
+  '08:00', '09:00', '10:00', '11:00', '12:00',
+  '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
+];
 
 export default function AgendaScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedHora, setSelectedHora] = useState<string | null>(null);
+  const [selectedAgendamento, setSelectedAgendamento] = useState<Agendamento | null>(null);
   const queryClient = useQueryClient();
+  const { mutate: excluirAgendamento } = useDeleteAgendamento();
 
-  const { data: agendamentos = [], isLoading } = useQuery<any[]>({
+  const { data: agendamentos = [], isLoading } = useQuery<Agendamento[]>({
     queryKey: ['agendamentos', format(selectedDate, 'yyyy-MM-dd')],
     queryFn: async () => {
       const startOfDayDate = startOfDay(selectedDate).toISOString();
@@ -66,19 +75,105 @@ export default function AgendaScreen() {
     }
   };
 
-  const horarios = [
-    '08:00', '09:00', '10:00', '11:00', '12:00',
-    '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
-  ];
+  const agendamentosPorHora = useMemo(() => {
+    return agendamentos.reduce<Record<string, any[]>>((acc, agendamento) => {
+      const hora = format(parseISO(agendamento.data_hora), 'HH:mm');
 
-  const getAgendamentoPorHora = (hora: string) => {
-    return agendamentos.find((a: any) => {
-      const agendHora = format(parseISO(a.data_hora), 'HH:mm');
-      return agendHora === hora;
+      if (!acc[hora]) {
+        acc[hora] = [];
+      }
+
+      acc[hora].push(agendamento);
+      return acc;
+    }, {});
+  }, [agendamentos]);
+
+  const agendamentosForaDaEscala = useMemo(() => {
+    return agendamentos.filter((agendamento: any) => {
+      const hora = format(parseISO(agendamento.data_hora), 'HH:mm');
+      return !HORARIOS.includes(hora);
     });
-  };
+  }, [agendamentos]);
 
   const proximosDias = [0, 1, 2, 3, 4, 5, 6].map(i => addDays(new Date(), i));
+
+  const abrirNovoAgendamento = (hora?: string | null) => {
+    setSelectedAgendamento(null);
+    setSelectedHora(hora || null);
+    setModalVisible(true);
+  };
+
+  const abrirEdicaoAgendamento = (agendamento: Agendamento) => {
+    setSelectedAgendamento(agendamento);
+    setSelectedHora(null);
+    setModalVisible(true);
+  };
+
+  const handleExcluirAgendamento = (agendamento: Agendamento) => {
+    Alert.alert(
+      'Excluir agendamento',
+      `Deseja excluir o agendamento de ${agendamento.cliente_nome} às ${format(parseISO(agendamento.data_hora), 'HH:mm')}?`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: () => {
+            excluirAgendamento(agendamento.id, {
+              onError: (error) => {
+                console.error('Erro ao excluir agendamento:', error);
+                Alert.alert('Erro', 'Não foi possível excluir o agendamento.');
+              },
+            });
+          },
+        },
+      ]
+    );
+  };
+
+  const renderAgendamentoCard = (agendamento: Agendamento, horaExibida?: string) => (
+    <TouchableOpacity
+      key={agendamento.id}
+      style={styles.agendamentoCard}
+      activeOpacity={0.9}
+      onPress={() => abrirEdicaoAgendamento(agendamento)}
+    >
+      <View style={styles.agendamentoHeader}>
+        <View style={styles.agendamentoInfo}>
+          <Text style={styles.clienteNome}>{agendamento.cliente_nome}</Text>
+          <Text style={styles.servico}>{agendamento.servico}</Text>
+        </View>
+        <View style={styles.horaTag}>
+          <Text style={styles.horaText}>
+            {horaExibida || format(parseISO(agendamento.data_hora), 'HH:mm')}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.cardActions}>
+        <View style={styles.primaryActionContainer}>
+          {!agendamento.confirmado_whatsapp && (
+            <TouchableOpacity
+              onPress={() => confirmarWhatsApp(agendamento)}
+              style={styles.whatsappButton}
+            >
+              <MessageCircle color="#fff" size={18} style={{ marginRight: 8 }} />
+              <Text style={styles.whatsappButtonText}>Confirmar WhatsApp</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        <TouchableOpacity
+          onPress={() => handleExcluirAgendamento(agendamento)}
+          style={styles.deleteButton}
+        >
+          <Trash2 color="#fff" size={18} />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
 
   if (isLoading) {
     return (
@@ -98,7 +193,7 @@ export default function AgendaScreen() {
           </View>
           <TouchableOpacity 
             style={styles.addButton}
-            onPress={() => setModalVisible(true)}
+            onPress={() => abrirNovoAgendamento()}
           >
             <Plus color={COLORS.background} size={24} />
           </TouchableOpacity>
@@ -127,38 +222,36 @@ export default function AgendaScreen() {
       </View>
 
       <View style={styles.content}>
-        {horarios.map(hora => {
-          const agendamento = getAgendamentoPorHora(hora);
+        {agendamentosForaDaEscala.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Horários fora da escala</Text>
+            <Text style={styles.sectionSubtitle}>
+              Agendamentos criados fora dos horários fixos da agenda.
+            </Text>
+
+            {agendamentosForaDaEscala.map((agendamento: any) => (
+              <View key={agendamento.id} style={styles.horarioItem}>
+                {renderAgendamentoCard(agendamento)}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {HORARIOS.map(hora => {
+          const agendamentosNoHorario = agendamentosPorHora[hora] || [];
           
           return (
             <View key={hora} style={styles.horarioItem}>
-              {agendamento ? (
-                <TouchableOpacity style={styles.agendamentoCard}>
-                  <View style={styles.agendamentoHeader}>
-                    <View style={styles.agendamentoInfo}>
-                      <Text style={styles.clienteNome}>{agendamento.cliente_nome}</Text>
-                      <Text style={styles.servico}>{agendamento.servico}</Text>
-                    </View>
-                    <View style={styles.horaTag}>
-                      <Text style={styles.horaText}>{hora}</Text>
-                    </View>
+              {agendamentosNoHorario.length > 0 ? (
+                agendamentosNoHorario.map((agendamento: any) => (
+                  <View key={agendamento.id} style={styles.slotCardSpacing}>
+                    {renderAgendamentoCard(agendamento, hora)}
                   </View>
-                  
-                  {!agendamento.confirmado_whatsapp && (
-                    <TouchableOpacity 
-                      onPress={() => confirmarWhatsApp(agendamento)}
-                      style={styles.whatsappButton}
-                    >
-                      <MessageCircle color="#fff" size={18} style={{ marginRight: 8 }} />
-                      <Text style={styles.whatsappButtonText}>Confirmar WhatsApp</Text>
-                    </TouchableOpacity>
-                  )}
-                </TouchableOpacity>
+                ))
               ) : (
                 <TouchableOpacity
                   onPress={() => {
-                    setSelectedHora(hora);
-                    setModalVisible(true);
+                    abrirNovoAgendamento(hora);
                   }}
                   style={styles.disponivelCard}
                 >
@@ -177,9 +270,11 @@ export default function AgendaScreen() {
       visible={modalVisible}
       selectedDate={selectedDate}
       selectedHora={selectedHora}
+      agendamento={selectedAgendamento}
       onClose={() => {
         setModalVisible(false);
         setSelectedHora(null);
+        setSelectedAgendamento(null);
       }}
     />
     </>
@@ -230,7 +325,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   dayButton: {
-    width: 64,
+    width: 70,
     height: 80,
     borderRadius: 16,
     backgroundColor: COLORS.cardBg,
@@ -266,8 +361,25 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 100,
   },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.white,
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: COLORS.zinc400,
+    marginBottom: 12,
+  },
   horarioItem: {
     marginBottom: 12,
+  },
+  slotCardSpacing: {
+    marginBottom: 8,
   },
   agendamentoCard: {
     backgroundColor: COLORS.cardBg,
@@ -275,6 +387,16 @@ const styles = StyleSheet.create({
     padding: 16,
     borderLeftWidth: 4,
     borderLeftColor: COLORS.gold,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 4,
+  },
+  primaryActionContainer: {
+    flex: 1,
   },
   agendamentoHeader: {
     flexDirection: 'row',
@@ -314,11 +436,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
+    flex: 1,
   },
   whatsappButtonText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
+  },
+  deleteButton: {
+    height: 44,
+    width: 44,
+    borderRadius: 8,
+    backgroundColor: COLORS.red,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 'auto',
   },
   disponivelCard: {
     backgroundColor: COLORS.cardBg,

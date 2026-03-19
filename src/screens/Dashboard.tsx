@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { supabase } from '../api/supabaseClient';
 import { useQuery } from '@tanstack/react-query';
-import { DollarSign, TrendingUp, ShoppingBag, Users, AlertCircle, Clock, Zap } from 'lucide-react-native';
-import { startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO, differenceInDays } from 'date-fns';
+import { DollarSign, TrendingUp, ShoppingBag, Users, AlertCircle, Clock, Check, Circle } from 'lucide-react-native';
+import { startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO, differenceInDays, format, isToday, isTomorrow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { COLORS } from '../styles/colors';
 
 export default function DashboardScreen() {
@@ -38,7 +39,8 @@ export default function DashboardScreen() {
   });
 
   const { data: agendamentos = [] } = useQuery({
-    queryKey: ['agendamentos-prox'],
+    queryKey: ['agendamentos', 'prox'],
+    refetchInterval: 30000,
     queryFn: async () => {
       const now = new Date().toISOString();
       const { data, error } = await supabase
@@ -81,6 +83,15 @@ export default function DashboardScreen() {
   const totalServicos = vendas.reduce((sum: number, v: any) => sum + v.valor_servico, 0);
   const ticketMedio = vendas.length > 0 ? totalFaturamento / vendas.length : 0;
   const qtdAtendimentos = vendas.length;
+
+  const getAgendaDayLabel = (dataHora: string) => {
+    const data = parseISO(dataHora);
+
+    if (isToday(data)) return 'Hoje';
+    if (isTomorrow(data)) return 'Amanhã';
+
+    return format(data, "EEE, dd/MM", { locale: ptBR });
+  };
 
   // Calcular produtos com estoque baixo
   const produtosEstoqueBaixo = produtos.filter((p: any) => p.estoque <= 5).length;
@@ -182,13 +193,18 @@ export default function DashboardScreen() {
 
         {agendamentos.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📅 Próximos Agendamentos</Text>
-            {agendamentos.slice(0, 3).map((agenda: any) => (
+            <Text style={styles.sectionTitle}>Próximos Agendamentos</Text>
+            {agendamentos.map((agenda: any) => (
               <View key={agenda.id} style={styles.agendaItem}>
                 <View style={styles.agendaItemLeft}>
-                  <Text style={styles.agendaItemTime}>
-                    {new Date(agenda.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
+                  <View style={styles.agendaDateBlock}>
+                    <Text style={styles.agendaItemDay}>
+                      {getAgendaDayLabel(agenda.data_hora)}
+                    </Text>
+                    <Text style={styles.agendaItemTime}>
+                      {new Date(agenda.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  </View>
                   <View>
                     <Text style={styles.agendaItemClient}>{agenda.cliente_nome}</Text>
                     <Text style={styles.agendaItemService}>{agenda.servico}</Text>
@@ -198,9 +214,11 @@ export default function DashboardScreen() {
                   styles.statusBadge,
                   agenda.status === 'confirmado' && styles.statusConfirmado
                 ]}>
-                  <Text style={styles.statusText}>
-                    {agenda.status === 'confirmado' ? '✓' : '○'}
-                  </Text>
+                  {agenda.status === 'confirmado' ? (
+                    <Check color={COLORS.white} size={16} strokeWidth={3} />
+                  ) : (
+                    <Circle color={COLORS.white} size={14} strokeWidth={2.5} />
+                  )}
                 </View>
               </View>
             ))}
@@ -342,12 +360,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  agendaDateBlock: {
+    minWidth: 78,
+    marginRight: 12,
+  },
+  agendaItemDay: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.zinc400,
+    textTransform: 'capitalize',
+    marginBottom: 2,
+  },
   agendaItemTime: {
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.gold,
-    marginRight: 12,
-    minWidth: 50,
   },
   agendaItemClient: {
     fontSize: 14,
@@ -369,10 +396,5 @@ const styles = StyleSheet.create({
   },
   statusConfirmado: {
     backgroundColor: '#22c55e',
-  },
-  statusText: {
-    color: COLORS.white,
-    fontWeight: '700',
-    fontSize: 16,
   },
 });
