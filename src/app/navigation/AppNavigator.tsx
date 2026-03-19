@@ -9,7 +9,7 @@ import { useAuth } from '../providers/AuthProvider';
 
 // Screens
 import DashboardScreen from '../../screens/Dashboard';
-import AgendaScreen from '../../screens/Agenda';
+import AgendaScreen from '../../features/agenda/screens/AgendaScreen';
 import ClientesScreen from '../../screens/Clientes';
 import CaixaScreen from '../../features/vendas/screens/CaixaScreen';
 import LembretesScreen from '../../screens/Lembretes';

@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { X } from 'lucide-react-native';
-import { COLORS } from '../../styles/colors';
-import { useCreateAgendamento, useUpdateAgendamento } from '../../hooks/useAgendamento';
-import { ClienteAutocompleteFields } from '../shared/ClienteAutocompleteFields';
-import { DateTimeField } from '../shared/DateTimeField';
-import { FormNotice } from '../shared/FormNotice';
-import { getHorarioAgendamentoMensagem, isHorarioAgendamentoValido } from '../../utils/agendamento';
-import type { Agendamento } from '../../types';
+import { COLORS } from '../../../styles/colors';
+import { useCreateAgendamento, useUpdateAgendamento } from '../hooks/useAgendamento';
+import { ClienteAutocompleteFields } from '../../../components/shared/ClienteAutocompleteFields';
+import { DateTimeField } from '../../../components/shared/DateTimeField';
+import { FormNotice } from '../../../components/shared/FormNotice';
+import { getHorarioAgendamentoMensagem, isHorarioAgendamentoValido } from '../utils/agendamento';
+import type { Agendamento } from '../../../types';
 
 interface NovoAgendamentoModalProps {
   visible: boolean;
