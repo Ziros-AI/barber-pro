@@ -1,14 +1,34 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
-import { supabase } from '../api/supabaseClient';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { DollarSign, Check, CheckCircle2 } from 'lucide-react-native';
-import { startOfDay, endOfDay, format } from 'date-fns';
-import { COLORS } from '../styles/colors';
+import { endOfDay, format, startOfDay } from 'date-fns';
+import { Check, CheckCircle2, DollarSign } from 'lucide-react-native';
+import { supabase } from '../api/supabaseClient';
 import { FinalizarVendaModal } from '../components/modals/FinalizarVendaModal';
+import { VendaDetalhesModal } from '../components/modals/VendaDetalhesModal';
+import { COLORS } from '../styles/colors';
+
+interface ProdutoVendido {
+  nome?: string;
+  quantidade?: number;
+  subtotal?: number;
+}
+
+interface VendaHistorico {
+  id: string;
+  created_at: string;
+  valor_total: number;
+  valor_servico: number;
+  forma_pagamento?: string | null;
+  produtos_vendidos?: ProdutoVendido[] | null;
+  cliente?: {
+    nome?: string | null;
+  } | null;
+}
 
 export default function CaixaScreen() {
   const [atendimentoSelecionado, setAtendimentoSelecionado] = useState<any>(null);
+  const [vendaSelecionada, setVendaSelecionada] = useState<VendaHistorico | null>(null);
 
   const { data: agendamentos = [], isLoading: loadingAgendamentos } = useQuery({
     queryKey: ['agendamentos-hoje-confirmados'],
@@ -33,24 +53,21 @@ export default function CaixaScreen() {
         .lte('data_hora', horarioAtual)
         .eq('status', 'confirmado')
         .order('data_hora', { ascending: true });
-      
+
       if (error) throw error;
       return data || [];
     },
-    refetchInterval: 5000
+    refetchInterval: 5000,
   });
 
   const { data: produtos = [], isLoading: loadingProdutos } = useQuery({
     queryKey: ['produtos'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*')
-        .order('nome', { ascending: true });
-      
+      const { data, error } = await supabase.from('produtos').select('*').order('nome', { ascending: true });
+
       if (error) throw error;
       return data || [];
-    }
+    },
   });
 
   const { data: vendas = [], isLoading: loadingVendas } = useQuery({
@@ -60,18 +77,27 @@ export default function CaixaScreen() {
 
       const { data, error } = await supabase
         .from('vendas')
-        .select('*')
+        .select(
+          `
+            id,
+            created_at,
+            valor_total,
+            valor_servico,
+            forma_pagamento,
+            produtos_vendidos,
+            cliente:clientes(nome)
+          `
+        )
         .gte('created_at', startOfDay(hoje).toISOString())
         .lte('created_at', endOfDay(hoje).toISOString())
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      return data || [];
-    }
+      return (data || []) as VendaHistorico[];
+    },
   });
 
-  const totalVendas = vendas.reduce((acc, venda: any) => acc + (venda.valor_total || 0), 0);
-
+  const totalVendas = vendas.reduce((acc, venda) => acc + (venda.valor_total || 0), 0);
   const isLoading = loadingAgendamentos || loadingProdutos || loadingVendas;
 
   if (isLoading) {
@@ -84,95 +110,97 @@ export default function CaixaScreen() {
 
   return (
     <>
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Caixa</Text>
-        <Text style={styles.subtitle}>Finalize os atendimentos de hoje ate o horario atual</Text>
-      </View>
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Caixa</Text>
+          <Text style={styles.subtitle}>Finalize os atendimentos de hoje ate o horario atual</Text>
+        </View>
 
-      <View style={styles.content}>
-        {totalVendas > 0 && (
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>Total de Vendas Hoje</Text>
-            <Text style={styles.totalValue}>R$ {totalVendas.toFixed(2)}</Text>
-          </View>
-        )}
+        <View style={styles.content}>
+          {totalVendas > 0 && (
+            <View style={styles.totalCard}>
+              <Text style={styles.totalLabel}>Total de Vendas Hoje</Text>
+              <Text style={styles.totalValue}>R$ {totalVendas.toFixed(2)}</Text>
+            </View>
+          )}
 
-        {agendamentos.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Pendentes de Finalização</Text>
-            {agendamentos.map((agendamento: any) => (
-              <View key={agendamento.id} style={styles.agendamentoCard}>
-                <View style={styles.agendamentoHeader}>
-                  <View style={styles.agendamentoInfo}>
-                    <Text style={styles.clienteNome}>{agendamento.cliente_nome}</Text>
-                    <Text style={styles.servico}>{agendamento.servico}</Text>
-                    <Text style={styles.valor}>
-                      R$ {(agendamento.valor || 50).toFixed(2)}
-                    </Text>
+          {agendamentos.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Pendentes de Finalizacao</Text>
+              {agendamentos.map((agendamento: any) => (
+                <View key={agendamento.id} style={styles.agendamentoCard}>
+                  <View style={styles.agendamentoHeader}>
+                    <View style={styles.agendamentoInfo}>
+                      <Text style={styles.clienteNome}>{agendamento.cliente_nome}</Text>
+                      <Text style={styles.servico}>{agendamento.servico}</Text>
+                      <Text style={styles.valor}>R$ {(agendamento.valor || 50).toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.iconCircleGreen}>
+                      <Check color={COLORS.white} size={20} />
+                    </View>
                   </View>
-                  <View style={styles.iconCircleGreen}>
-                    <Check color={COLORS.white} size={20} />
-                  </View>
+
+                  <TouchableOpacity style={styles.finalizarButton} onPress={() => setAtendimentoSelecionado(agendamento)}>
+                    <Text style={styles.finalizarButtonText}>Finalizar Atendimento</Text>
+                  </TouchableOpacity>
                 </View>
-                
+              ))}
+            </>
+          )}
+
+          {vendas.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Historico de Hoje</Text>
+              {vendas.map((venda) => (
                 <TouchableOpacity
-                  style={styles.finalizarButton}
-                  onPress={() => setAtendimentoSelecionado(agendamento)}
+                  key={venda.id}
+                  style={styles.vendaCard}
+                  activeOpacity={0.85}
+                  onPress={() => setVendaSelecionada(venda)}
                 >
-                  <Text style={styles.finalizarButtonText}>Finalizar Atendimento</Text>
+                  <View style={styles.vendaHeader}>
+                    <View style={styles.vendaInfo}>
+                      <Text style={styles.vendaValor}>R$ {venda.valor_total.toFixed(2)}</Text>
+                      <Text style={styles.vendaCliente}>{venda.cliente?.nome?.trim() || 'Cliente nao informado'}</Text>
+                      <Text style={styles.vendaServico}>Serviço: R$ {venda.valor_servico.toFixed(2)}</Text>
+                      {venda.produtos_vendidos?.length ? (
+                        <Text style={styles.vendaServico}>{venda.produtos_vendidos.length} produto(s)</Text>
+                      ) : null}
+                      <Text style={styles.dateText}>{format(new Date(venda.created_at), 'HH:mm')}</Text>
+                    </View>
+                    <View style={styles.iconCircle}>
+                      <CheckCircle2 color={COLORS.background} size={20} />
+                    </View>
+                  </View>
+                  <Text style={styles.vendaHint}>Toque para ver os detalhes</Text>
                 </TouchableOpacity>
-              </View>
-            ))}
-          </>
-        )}
+              ))}
+            </>
+          )}
 
-        {vendas.length > 0 && (
-          <>
-            <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Histórico de Hoje</Text>
-            {vendas.map((venda: any) => (
-              <View key={venda.id} style={styles.vendaCard}>
-                <View style={styles.vendaHeader}>
-                  <View style={styles.vendaInfo}>
-                    <Text style={styles.vendaValor}>R$ {venda.valor_total.toFixed(2)}</Text>
-                    <Text style={styles.vendaServico}>
-                      Serviço: R$ {venda.valor_servico.toFixed(2)}
-                    </Text>
-                    {venda.produtos_vendidos?.length > 0 && (
-                      <Text style={styles.vendaServico}>
-                        {venda.produtos_vendidos.length} produto(s)
-                      </Text>
-                    )}
-                    <Text style={styles.dateText}>
-                      {format(new Date(venda.created_at), 'HH:mm')}
-                    </Text>
-                  </View>
-                  <View style={styles.iconCircle}>
-                    <CheckCircle2 color={COLORS.background} size={20} />
-                  </View>
-                </View>
-              </View>
-            ))}
-          </>
-        )}
+          {agendamentos.length === 0 && vendas.length === 0 && (
+            <View style={styles.emptyState}>
+              <DollarSign color={COLORS.zinc700} size={64} />
+              <Text style={styles.emptyText}>Nenhuma atividade no caixa hoje</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
 
-        {agendamentos.length === 0 && vendas.length === 0 && (
-          <View style={styles.emptyState}>
-            <DollarSign color={COLORS.zinc700} size={64} />
-            <Text style={styles.emptyText}>Nenhuma atividade no caixa hoje</Text>
-          </View>
-        )}
-      </View>
-    </ScrollView>
+      {atendimentoSelecionado && (
+        <FinalizarVendaModal
+          visible={!!atendimentoSelecionado}
+          onClose={() => setAtendimentoSelecionado(null)}
+          agendamento={atendimentoSelecionado}
+          produtos={produtos}
+        />
+      )}
 
-    {atendimentoSelecionado && (
-      <FinalizarVendaModal
-        visible={!!atendimentoSelecionado}
-        onClose={() => setAtendimentoSelecionado(null)}
-        agendamento={atendimentoSelecionado}
-        produtos={produtos}
+      <VendaDetalhesModal
+        visible={!!vendaSelecionada}
+        onClose={() => setVendaSelecionada(null)}
+        venda={vendaSelecionada}
       />
-    )}
     </>
   );
 }
@@ -250,9 +278,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 18,
   },
+  vendaCliente: {
+    color: COLORS.zinc300,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
+  },
   vendaServico: {
     color: COLORS.zinc400,
     fontSize: 14,
+  },
+  vendaHint: {
+    color: COLORS.gold,
+    fontSize: 13,
+    fontWeight: '600',
   },
   iconCircle: {
     backgroundColor: COLORS.gold,
@@ -262,27 +301,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   dateText: {
     color: COLORS.zinc400,
-    fontSize: 14,
-  },
-  produtosSection: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.zinc800,
-  },
-  produtosLabel: {
-    color: COLORS.zinc400,
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  produtoItem: {
-    color: COLORS.zinc300,
     fontSize: 14,
   },
   emptyState: {
