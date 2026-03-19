@@ -8,13 +8,13 @@ import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '../providers/AuthProvider';
 
 // Screens
-import DashboardScreen from '../../screens/Dashboard';
+import DashboardScreen from '../../features/dashboard/screens/DashboardScreen';
 import AgendaScreen from '../../features/agenda/screens/AgendaScreen';
 import ClientesScreen from '../../features/clientes/screens/ClientesScreen';
 import CaixaScreen from '../../features/vendas/screens/CaixaScreen';
 import LembretesScreen from '../../features/lembretes/screens/LembretesScreen';
 import LoginScreen from '../../features/auth/screens/LoginScreen';
-import ConfiguracoesScreen from '../../screens/Configuracoes';
+import ConfiguracoesScreen from '../../features/configuracoes/screens/ConfiguracoesScreen';
 import ProdutosScreen from '../../features/produtos/screens/ProdutosScreen';
 
 const Tab = createBottomTabNavigator();
