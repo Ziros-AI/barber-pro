@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, StyleSheet, TextInput, Linking } from 'react-native';
-import { supabase } from '../services/api/supabaseClient';
+import { supabase } from '../../../services/api/supabaseClient';
 import { useQuery } from '@tanstack/react-query';
 import { User, Phone, Calendar, Plus, AlertCircle, MessageCircle, Search } from 'lucide-react-native';
-import { COLORS } from '../styles/colors';
+import { COLORS } from '../../../styles/colors';
 import { differenceInDays, parseISO } from 'date-fns';
-import { NovoClienteModal } from '../components/modals/NovoClienteModal';
-import { ClienteDetalhesModal } from '../components/modals/ClienteDetalhesModal';
+import { NovoClienteModal } from '../components/NovoClienteModal';
+import { ClienteDetalhesModal } from '../components/ClienteDetalhesModal';
 
 export default function ClientesScreen() {
   const [modalVisible, setModalVisible] = useState(false);

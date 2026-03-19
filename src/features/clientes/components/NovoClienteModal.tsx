@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, ScrollView } from 'react-native';
 import { X } from 'lucide-react-native';
-import { COLORS } from '../../styles/colors';
-import { useCreateCliente } from '../../hooks/useCliente';
-import { formatPhoneNumber } from '../shared/ClienteAutocompleteFields';
-import { isValidPhone } from '../../lib/utils';
+import { COLORS } from '../../../styles/colors';
+import { useCreateCliente } from '../hooks/useCliente';
+import { formatPhoneNumber } from '../../../components/shared/ClienteAutocompleteFields';
+import { isValidPhone } from '../../../lib/utils';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 
 interface NovoClienteModalProps {

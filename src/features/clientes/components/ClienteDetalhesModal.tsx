@@ -10,9 +10,9 @@ import {
   ScrollView,
 } from 'react-native';
 import { X, Trash2 } from 'lucide-react-native';
-import { COLORS } from '../../styles/colors';
-import { useDeleteCliente, useUpdateCliente } from '../../hooks/useCliente';
-import { useAlert } from '../../app/providers/AlertProvider';
+import { COLORS } from '../../../styles/colors';
+import { useDeleteCliente, useUpdateCliente } from '../hooks/useCliente';
+import { useAlert } from '../../../app/providers/AlertProvider';
 
 interface ClienteData {
   id: string;

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../services/api/supabaseClient';
-import { isValidPhone, mapClienteError, normalizeEmail } from '../lib/utils';
+import { supabase } from '../../../services/api/supabaseClient';
+import { isValidPhone, mapClienteError, normalizeEmail } from '../../../lib/utils';
 
 interface CreateClienteData {
   nome: string;
