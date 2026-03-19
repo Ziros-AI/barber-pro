@@ -1,10 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import { X, Plus, Minus, Check, CheckCircle2 } from 'lucide-react-native';
 import { COLORS } from '../../styles/colors';
-import { FormaPagamento, useCreateVenda } from '../../hooks/useVenda';
-import { useUpdateAgendamento } from '../../hooks/useAgendamento';
-import { useUpdateProduto } from '../../hooks/useProduto';
+import { FormaPagamento } from '../../hooks/useVenda';
 import { useQueryClient } from '@tanstack/react-query';
 import { getErrorMessage } from '../../lib/utils';
 import { supabase } from '../../api/supabaseClient';
@@ -44,27 +42,20 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
   visible,
   onClose,
   agendamento,
-  produtos,
+  produtos
 }) => {
   const [produtosSelecionados, setProdutosSelecionados] = useState<ProdutoSelecionado[]>([]);
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>('Dinheiro');
+  const [finalizando, setFinalizando] = useState(false);
 
   const queryClient = useQueryClient();
-  const { mutateAsync: criarVenda, isPending: criandoVenda } = useCreateVenda();
-  const { mutateAsync: atualizarAgendamento, isPending: atualizandoAgendamento } = useUpdateAgendamento();
-  const { mutateAsync: atualizarProduto } = useUpdateProduto();
 
   const valorServico = agendamento.valor || 50;
   const valorProdutos = produtosSelecionados.reduce((sum, p) => sum + p.subtotal, 0);
   const valorTotal = valorServico + valorProdutos;
-  const finalizando = criandoVenda || atualizandoAgendamento;
-
-  const produtosSelecionadosPorId = useMemo(() => {
-    return new Map(produtosSelecionados.map((item) => [item.produto_id, item]));
-  }, [produtosSelecionados]);
 
   const adicionarProduto = (produto: Produto) => {
-    const existente = produtosSelecionadosPorId.get(produto.id);
+    const existente = produtosSelecionados.find((item) => item.produto_id === produto.id);
 
     if (existente) {
       if (existente.quantidade >= produto.estoque) {
@@ -145,11 +136,13 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
       throw error;
     }
 
-    return data?.id ?? null;
+    return (data as { id: string } | null)?.id ?? null;
   };
 
   const handleFinalizar = async () => {
     try {
+      setFinalizando(true);
+
       for (const item of produtosSelecionados) {
         const produtoAtual = produtos.find((produto) => produto.id === item.produto_id);
 
@@ -164,35 +157,24 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
 
       const clienteId = await buscarClienteId();
 
-      await criarVenda({
-        valor_servico: valorServico,
-        valor_total: valorTotal,
-        forma_pagamento: formaPagamento,
-        produtos_vendidos: produtosSelecionados.map((item) => ({
+      const { error } = await supabase.rpc('finalizar_venda_completa' as never, {
+        p_agendamento_id: agendamento.id,
+        p_cliente_id: clienteId,
+        p_valor_servico: valorServico,
+        p_valor_total: valorTotal,
+        p_forma_pagamento: formaPagamento,
+        p_produtos: produtosSelecionados.map((item) => ({
+          produto_id: item.produto_id,
           nome: item.nome,
           quantidade: item.quantidade,
           preco_unitario: item.preco,
           subtotal: item.subtotal,
         })),
-        cliente_id: clienteId,
-      });
+      } as never);
 
-      await atualizarAgendamento({
-        id: agendamento.id,
-        data: { status: 'concluido' },
-      });
-
-      await Promise.all(
-        produtosSelecionados.map(async (item) => {
-          const produtoAtual = produtos.find((produto) => produto.id === item.produto_id);
-          if (!produtoAtual) return;
-
-          await atualizarProduto({
-            id: produtoAtual.id,
-            data: { estoque: produtoAtual.estoque - item.quantidade },
-          });
-        })
-      );
+      if (error) {
+        throw error;
+      }
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['agendamentos-hoje-confirmados'] }),
@@ -213,6 +195,8 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
         `Não foi possível finalizar a venda: ${getErrorMessage(error)}`
       );
     }
+
+    setFinalizando(false);
   };
 
   const formasPagamento: FormaPagamento[] = ['Dinheiro', 'PIX', 'Cartão Débito', 'Cartão Crédito'];
@@ -240,7 +224,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({
             <Text style={styles.sectionTitle}>Adicionar Produtos</Text>
             <View style={styles.produtosGrid}>
               {produtos.map((produto) => {
-                const selecionado = produtosSelecionadosPorId.get(produto.id);
+                const selecionado = produtosSelecionados.find((item) => item.produto_id === produto.id);
 
                 return (
                   <View key={produto.id} style={styles.produtoCard}>

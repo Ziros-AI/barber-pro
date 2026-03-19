@@ -6,58 +6,58 @@ export interface Database {
           id: string;
           data_hora: string;
           cliente_nome: string;
-          cliente_telefone: string;
+          cliente_telefone: string | null;
+          cliente_id: string | null;
           servico: string;
-          status: 'pendente' | 'confirmado' | 'concluido' | 'cancelado';
+          status: 'pendente' | 'confirmado' | 'concluido';
           confirmado_whatsapp: boolean;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
           data_hora: string;
           cliente_nome: string;
-          cliente_telefone: string;
+          cliente_telefone?: string | null;
+          cliente_id?: string | null;
           servico: string;
-          status?: 'pendente' | 'confirmado' | 'concluido' | 'cancelado';
+          status?: 'pendente' | 'confirmado' | 'concluido';
           confirmado_whatsapp?: boolean;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           id?: string;
           data_hora?: string;
           cliente_nome?: string;
-          cliente_telefone?: string;
+          cliente_telefone?: string | null;
+          cliente_id?: string | null;
           servico?: string;
-          status?: 'pendente' | 'confirmado' | 'concluido' | 'cancelado';
+          status?: 'pendente' | 'confirmado' | 'concluido';
           confirmado_whatsapp?: boolean;
-          updated_at?: string;
         };
       };
       clientes: {
         Row: {
           id: string;
           nome: string;
-          email: string;
-          telefone: string;
+          email: string | null;
+          telefone: string | null;
+          frequencia_dias: number;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
           nome: string;
-          email: string;
-          telefone: string;
+          email?: string | null;
+          telefone?: string | null;
+          frequencia_dias?: number;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           id?: string;
           nome?: string;
-          email?: string;
-          telefone?: string;
-          updated_at?: string;
+          email?: string | null;
+          telefone?: string | null;
+          frequencia_dias?: number;
         };
       };
       vendas: {
@@ -70,18 +70,16 @@ export interface Database {
           produtos_vendidos: any;
           cliente_id: string | null;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
-          data_hora: string;
+          data_hora?: string;
           valor_total: number;
           valor_servico: number;
           forma_pagamento?: string | null;
           produtos_vendidos?: any;
           cliente_id?: string | null;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           id?: string;
@@ -91,95 +89,130 @@ export interface Database {
           forma_pagamento?: string | null;
           produtos_vendidos?: any;
           cliente_id?: string | null;
-          updated_at?: string;
+        };
+      };
+      venda_itens: {
+        Row: {
+          id: string;
+          venda_id: string;
+          produto_id: string;
+          quantidade: number;
+          preco_unitario: number;
+          subtotal: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          venda_id: string;
+          produto_id: string;
+          quantidade: number;
+          preco_unitario: number;
+          subtotal: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          venda_id?: string;
+          produto_id?: string;
+          quantidade?: number;
+          preco_unitario?: number;
+          subtotal?: number;
+          created_at?: string;
         };
       };
       produtos: {
         Row: {
           id: string;
           nome: string;
-          marca: string | null;
+          marca: string;
           preco: number;
           estoque: number;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
           nome: string;
-          marca?: string | null;
+          marca: string;
           preco: number;
           estoque?: number;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           id?: string;
           nome?: string;
-          marca?: string | null;
+          marca?: string;
           preco?: number;
           estoque?: number;
-          updated_at?: string;
         };
       };
       lembretes: {
         Row: {
           id: string;
-          agendamento_id: string;
+          cliente_id: string | null;
+          agendamento_id: string | null;
           cliente_nome: string;
           mensagem: string;
           data_envio: string;
           status: 'pendente' | 'enviado';
+          servico: string | null;
+          cliente_telefone: string | null;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
-          agendamento_id: string;
+          cliente_id?: string | null;
+          agendamento_id?: string | null;
           cliente_nome: string;
           mensagem: string;
           data_envio: string;
           status?: 'pendente' | 'enviado';
+          servico?: string | null;
+          cliente_telefone?: string | null;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           id?: string;
-          agendamento_id?: string;
+          cliente_id?: string | null;
+          agendamento_id?: string | null;
           cliente_nome?: string;
           mensagem?: string;
           data_envio?: string;
           status?: 'pendente' | 'enviado';
-          updated_at?: string;
+          servico?: string | null;
+          cliente_telefone?: string | null;
         };
       };
       configuracoes: {
         Row: {
           id: string;
           nome_barbearia: string;
-          horas_lembrete: number;
           mensagem_lembrete_template: string;
-          lembretes_ativos: boolean;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
           nome_barbearia: string;
-          horas_lembrete?: number;
           mensagem_lembrete_template: string;
-          lembretes_ativos?: boolean;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           id?: string;
           nome_barbearia?: string;
-          horas_lembrete?: number;
           mensagem_lembrete_template?: string;
-          lembretes_ativos?: boolean;
-          updated_at?: string;
         };
+      };
+    };
+    Functions: {
+      finalizar_venda_completa: {
+        Args: {
+          p_agendamento_id: string;
+          p_cliente_id: string | null;
+          p_valor_servico: number;
+          p_valor_total: number;
+          p_forma_pagamento: string;
+          p_produtos?: any;
+        };
+        Returns: string;
       };
     };
   };

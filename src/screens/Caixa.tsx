@@ -19,7 +19,7 @@ export default function CaixaScreen() {
 
       const { error: errorAtualizacao } = await supabase
         .from('agendamentos')
-        .update({ status: 'confirmado' })
+        .update({ status: 'confirmado' } as never)
         .gte('data_hora', inicioDoDia)
         .lte('data_hora', horarioAtual)
         .eq('status', 'pendente');
