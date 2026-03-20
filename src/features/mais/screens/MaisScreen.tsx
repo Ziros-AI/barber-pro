@@ -17,26 +17,26 @@ const shortcuts: ShortcutItem[] = [
     title: 'Servicos',
     description: 'Edite os servicos oferecidos e os valores praticados.',
     route: 'Servicos',
-    icon: <Scissors color={COLORS.gold} size={22} />,
+    icon: <Scissors color={COLORS.gold} size={22} />
   },
   {
     title: 'Produtos',
     description: 'Gerencie produtos e itens disponiveis no caixa.',
     route: 'Produtos',
-    icon: <Package color={COLORS.gold} size={22} />,
+    icon: <Package color={COLORS.gold} size={22} />
   },
   {
     title: 'Lembretes',
     description: 'Acompanhe avisos e lembretes automaticos.',
     route: 'Lembretes',
-    icon: <Bell color={COLORS.gold} size={22} />,
+    icon: <Bell color={COLORS.gold} size={22} />
   },
   {
     title: 'Configuracoes',
     description: 'Personalize dados da barbearia e preferencias gerais.',
     route: 'Configuracoes',
-    icon: <Settings color={COLORS.gold} size={22} />,
-  },
+    icon: <Settings color={COLORS.gold} size={22} />
+  }
 ];
 
 export default function MaisScreen() {
@@ -76,10 +76,10 @@ export default function MaisScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.background
   },
   content: {
-    paddingBottom: 32,
+    paddingBottom: 32
   },
   hero: {
     paddingTop: 56,
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     backgroundColor: COLORS.cardBg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.zinc800,
+    borderBottomColor: COLORS.zinc800
   },
   eyebrow: {
     color: COLORS.gold,
@@ -95,23 +95,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 10,
+    marginBottom: 10
   },
   title: {
     color: COLORS.white,
     fontSize: 32,
     fontWeight: '900',
-    marginBottom: 8,
+    marginBottom: 8
   },
   subtitle: {
     color: COLORS.zinc400,
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 20
   },
   section: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    gap: 12,
+    gap: 12
   },
   card: {
     backgroundColor: COLORS.cardBg,
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 14
   },
   cardIcon: {
     width: 44,
@@ -129,20 +129,20 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: `${COLORS.gold}15`,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
   cardBody: {
-    flex: 1,
+    flex: 1
   },
   cardTitle: {
     color: COLORS.white,
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 4
   },
   cardDescription: {
     color: COLORS.zinc400,
     fontSize: 13,
-    lineHeight: 18,
-  },
+    lineHeight: 18
+  }
 });
