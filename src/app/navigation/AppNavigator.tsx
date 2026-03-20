@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Calendar, Users, DollarSign, LayoutDashboard, Settings, Bell } from 'lucide-react-native';
+import { Calendar, Users, DollarSign, LayoutDashboard, Ellipsis } from 'lucide-react-native';
 import { View, ActivityIndicator } from 'react-native';
 
 import { useAuth } from '../providers/AuthProvider';
@@ -15,11 +15,12 @@ import LembretesScreen from '../../features/lembretes/screens/LembretesScreen';
 import LoginScreen from '../../features/auth/screens/LoginScreen';
 import ConfiguracoesScreen from '../../features/configuracoes/screens/ConfiguracoesScreen';
 import ProdutosScreen from '../../features/produtos/screens/ProdutosScreen';
+import MaisScreen from '../../features/mais/screens/MaisScreen';
 import { ServicosScreen } from '../../features/configuracoes/servicos/screens';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
-const ConfigStack = createNativeStackNavigator();
+const MoreStack = createNativeStackNavigator();
 
 const TabNavigator = () => {
   return (
@@ -29,7 +30,7 @@ const TabNavigator = () => {
         tabBarStyle: {
           backgroundColor: '#18181b',
           borderTopColor: '#27272a',
-          height: 70,
+          height: 74,
           paddingBottom: 10,
           paddingTop: 10,
         },
@@ -49,13 +50,6 @@ const TabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="Clientes"
-        component={ClientesScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
-        }}
-      />
-      <Tab.Screen
         name="Caixa"
         component={CaixaScreen}
         options={{
@@ -70,29 +64,32 @@ const TabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="Lembretes"
-        component={LembretesScreen}
+        name="Clientes"
+        component={ClientesScreen}
         options={{
-          tabBarIcon: ({ color, size }) => <Bell color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
         }}
       />
       <Tab.Screen
-        name="Configurações"
-        component={ConfigStackNavigator}
+        name="Mais"
+        component={MoreStackNavigator}
         options={{
-          tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <Ellipsis color={color} size={size} />,
         }}
       />
     </Tab.Navigator>
   );
 };
 
-function ConfigStackNavigator() {
+function MoreStackNavigator() {
   return (
-    <ConfigStack.Navigator screenOptions={{ headerShown: false }}>
-      <ConfigStack.Screen name="ConfiguracoesMain" component={ConfiguracoesScreen} />
-      <ConfigStack.Screen name="Servicos" component={ServicosScreen} />
-    </ConfigStack.Navigator>
+    <MoreStack.Navigator screenOptions={{ headerShown: false }}>
+      <MoreStack.Screen name="MaisMain" component={MaisScreen} />
+      <MoreStack.Screen name="Servicos" component={ServicosScreen} />
+      <MoreStack.Screen name="Produtos" component={ProdutosScreen} />
+      <MoreStack.Screen name="Lembretes" component={LembretesScreen} />
+      <MoreStack.Screen name="Configuracoes" component={ConfiguracoesScreen} />
+    </MoreStack.Navigator>
   );
 }
 
