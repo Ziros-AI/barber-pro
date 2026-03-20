@@ -13,10 +13,12 @@ import { Plus, Search, Scissors, Clock, DollarSign } from 'lucide-react-native';
 import { COLORS } from '../../../../styles/colors';
 import { supabase } from '../../../../services/api/supabaseClient';
 import { NovoServicoModal } from '../components/NovoServicoModal';
+import { ServicoDetalhesModal } from '../components/ServicoDetalhesModal';
 
 export default function ServicosScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [servicoSelecionado, setServicoSelecionado] = useState<any | null>(null);
 
   const { data: servicos = [], isLoading } = useQuery({
     queryKey: ['servicos'],
@@ -44,12 +46,15 @@ export default function ServicosScreen() {
   }
 
   const renderServicoCard = (servico: any) => (
-    <View key={servico.id} style={styles.card}>
+    <TouchableOpacity
+      key={servico.id}
+      style={styles.card}
+      onPress={() => setServicoSelecionado(servico)} // seleciona o serviço e abre modal
+    >
       <View style={styles.headerCard}>
         <View style={styles.icon}>
           <Scissors color={COLORS.background} size={20} />
         </View>
-
         <View style={{ flex: 1 }}>
           <Text style={styles.nome}>{servico.nome}</Text>
         </View>
@@ -68,7 +73,7 @@ export default function ServicosScreen() {
           {servico.duracao} min
         </Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -113,6 +118,11 @@ export default function ServicosScreen() {
       <NovoServicoModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
+      />
+      <ServicoDetalhesModal
+        visible={!!servicoSelecionado}
+        servico={servicoSelecionado}
+        onClose={() => setServicoSelecionado(null)}
       />
     </>
   );
