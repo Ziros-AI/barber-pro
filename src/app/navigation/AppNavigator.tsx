@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useQueryClient } from '@tanstack/react-query';
 import { Calendar, Users, DollarSign, LayoutDashboard, Ellipsis, Bell, Package, Scissors, Settings } from 'lucide-react-native';
 import { View, ActivityIndicator, Pressable, TouchableOpacity, Text, StyleSheet } from 'react-native';
 
@@ -17,6 +18,7 @@ import ConfiguracoesScreen from '../../features/configuracoes/screens/Configurac
 import ProdutosScreen from '../../features/produtos/screens/ProdutosScreen';
 import { ServicosScreen } from '../../features/configuracoes/servicos/screens';
 import { COLORS } from '../../styles/colors';
+import { fetchAgendaConfigByUserId } from '../../features/agenda/hooks/useAgendaConfig';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -30,7 +32,7 @@ type MoreShortcut = {
 
 const moreShortcuts: MoreShortcut[] = [
   {
-    title: 'Servicos',
+    title: 'Serviços',
     route: 'Servicos',
     icon: <Scissors color={COLORS.gold} size={18} />
   },
@@ -45,7 +47,7 @@ const moreShortcuts: MoreShortcut[] = [
     icon: <Bell color={COLORS.gold} size={18} />
   },
   {
-    title: 'Configuracoes',
+    title: 'Configurações',
     route: 'Configuracoes',
     icon: <Settings color={COLORS.gold} size={18} />
   }
@@ -193,7 +195,19 @@ const TabNavigator = () => {
 };
 
 const AppNavigator = () => {
-  const { isLoadingAuth, isAuthenticated } = useAuth();
+  const { user, isLoadingAuth, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    queryClient.prefetchQuery({
+      queryKey: ['configuracoes', 'agenda', user.id],
+      queryFn: () => fetchAgendaConfigByUserId(user.id),
+    });
+  }, [queryClient, user?.id]);
 
   if (isLoadingAuth) {
     return (

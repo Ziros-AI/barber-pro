@@ -2,11 +2,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, addDays } from 'date-fns';
 import { supabase } from '../../../services/api/supabaseClient';
 import { getHorarioAgendamentoMensagem, isHorarioAgendamentoValido } from '../utils/agendamento';
+import type { AgendaConfig } from '../utils/agendaConfig';
 
 interface CreateAgendamentoData {
   data_hora: string;
   cliente_nome: string;
   cliente_telefone: string;
+  servico_id: string;
   servico: string;
   status?: string;
   confirmado_whatsapp?: boolean;
@@ -15,6 +17,12 @@ interface CreateAgendamentoData {
 interface Agendamento extends CreateAgendamentoData {
   id: string;
   created_at: string;
+  servicos?: {
+    id: string;
+    nome: string;
+    preco: number;
+    duracao: number;
+  } | null;
 }
 
 interface Lembrete {
@@ -25,24 +33,24 @@ interface Lembrete {
   status: string;
 }
 
-export const useCreateAgendamento = () => {
+export const useCreateAgendamento = (agendaConfig?: AgendaConfig) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (data: CreateAgendamentoData) => {
-      if (!isHorarioAgendamentoValido(data.data_hora)) {
-        throw new Error(getHorarioAgendamentoMensagem());
+      if (!isHorarioAgendamentoValido(data.data_hora, agendaConfig)) {
+        throw new Error(getHorarioAgendamentoMensagem(agendaConfig, data.data_hora));
       }
 
-      const { data: result, error } = await (supabase
+      const { data: result, error } = await ((supabase
         .from('agendamentos')
         .insert([{
           ...data,
           status: data.status || 'pendente',
           confirmado_whatsapp: false,
         }] as any)
-        .select()
-        .single() as any);
+        .select('*')
+        .single()) as any);
 
       if (error) throw error;
       return result;
@@ -54,7 +62,7 @@ export const useCreateAgendamento = () => {
   });
 };
 
-export const useUpdateAgendamento = () => {
+export const useUpdateAgendamento = (agendaConfig?: AgendaConfig) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -65,16 +73,16 @@ export const useUpdateAgendamento = () => {
       id: string;
       data: Partial<CreateAgendamentoData>;
     }) => {
-      if (data.data_hora && !isHorarioAgendamentoValido(data.data_hora)) {
-        throw new Error(getHorarioAgendamentoMensagem());
+      if (data.data_hora && !isHorarioAgendamentoValido(data.data_hora, agendaConfig)) {
+        throw new Error(getHorarioAgendamentoMensagem(agendaConfig, data.data_hora));
       }
 
-      const { data: result, error } = await (supabase
+      const { data: result, error } = await ((supabase
         .from('agendamentos' as any)
         .update(data as any as never)
         .eq('id', id)
-        .select()
-        .single() as any);
+        .select('*')
+        .single()) as any);
 
       if (error) throw error;
 

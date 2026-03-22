@@ -12,9 +12,16 @@ interface Agendamento {
   id: string;
   cliente_nome: string;
   cliente_telefone?: string;
-  servico: string;
+  servico?: string;
+  servico_id?: string | null;
   data_hora: string;
   valor?: number;
+  servicos?: {
+    id: string;
+    nome: string;
+    preco: number;
+    duracao: number;
+  } | null;
 }
 
 interface Produto {
@@ -47,7 +54,8 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({ visibl
   const queryClient = useQueryClient();
   const { showAlert, showConfirm } = useAlert();
 
-  const valorServico = agendamento.valor || 50;
+  const nomeServico = agendamento.servicos?.nome || agendamento.servico || 'Servico nao informado';
+  const valorServico = agendamento.servicos?.preco || agendamento.valor || 50;
   const valorProdutos = produtosSelecionados.reduce((sum, p) => sum + p.subtotal, 0);
   const valorTotal = valorServico + valorProdutos;
 
@@ -157,6 +165,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({ visibl
       const { error } = await supabase.rpc('finalizar_venda_completa' as never, {
         p_agendamento_id: agendamento.id,
         p_cliente_id: clienteId,
+        p_servico_id: agendamento.servico_id || agendamento.servicos?.id || null,
         p_valor_servico: valorServico,
         p_valor_total: valorTotal,
         p_forma_pagamento: formaPagamento,
@@ -211,7 +220,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({ visibl
           <View style={styles.header}>
             <View>
               <Text style={styles.title}>{agendamento.cliente_nome}</Text>
-              <Text style={styles.subtitle}>{agendamento.servico}</Text>
+              <Text style={styles.subtitle}>{nomeServico}</Text>
             </View>
             <TouchableOpacity onPress={onClose} disabled={finalizando}>
               <X color={COLORS.white} size={24} />

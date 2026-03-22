@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { X } from 'lucide-react-native';
 import { COLORS } from '../../../styles/colors';
@@ -6,8 +7,10 @@ import { useCreateAgendamento, useUpdateAgendamento } from '../hooks/useAgendame
 import { ClienteAutocompleteFields } from '../../../components/shared/ClienteAutocompleteFields';
 import { DateTimeField } from '../../../components/shared/DateTimeField';
 import { FormNotice } from '../../../components/shared/FormNotice';
+import { supabase } from '../../../services/api/supabaseClient';
 import { getHorarioAgendamentoMensagem, isHorarioAgendamentoValido } from '../utils/agendamento';
 import type { Agendamento } from '../../../types';
+import { useAgendaConfig } from '../hooks/useAgendaConfig';
 
 interface NovoAgendamentoModalProps {
   visible: boolean;
@@ -38,17 +41,30 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
   const [clienteNome, setClienteNome] = useState('');
   const [clienteTelefone, setClienteTelefone] = useState('');
   const [clienteValido, setClienteValido] = useState(false);
-  const [servico, setServico] = useState('');
+  const [servicoId, setServicoId] = useState('');
   const [dataHora, setDataHora] = useState<Date>(() => getInitialDateTime(selectedDate, selectedHora));
   const [feedback, setFeedback] = useState<{ title: string; message: string } | null>(null);
+  const { data: agendaConfig } = useAgendaConfig();
 
-  const { mutate: criarAgendamento, isPending: isCreating } = useCreateAgendamento();
-  const { mutate: atualizarAgendamento, isPending: isUpdating } = useUpdateAgendamento();
+  const { mutate: criarAgendamento, isPending: isCreating } = useCreateAgendamento(agendaConfig);
+  const { mutate: atualizarAgendamento, isPending: isUpdating } = useUpdateAgendamento(agendaConfig);
   const isEditing = Boolean(agendamento);
   const isPending = isCreating || isUpdating;
-  const horarioValido = isHorarioAgendamentoValido(dataHora);
+  const horarioValido = isHorarioAgendamentoValido(dataHora, agendaConfig);
 
-  const servicos = ['Corte', 'Barba', 'Corte + Barba', 'Pigmentação', 'Design de Barba'];
+  const { data: servicos = [], isLoading: isLoadingServicos } = useQuery({
+    queryKey: ['servicos'],
+    enabled: visible,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('servicos')
+        .select('id, nome, preco, duracao')
+        .order('nome', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
   useEffect(() => {
     if (!visible) {
@@ -59,7 +75,7 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
       setClienteNome(agendamento.cliente_nome);
       setClienteTelefone(agendamento.cliente_telefone);
       setClienteValido(true);
-      setServico(agendamento.servico);
+      setServicoId(agendamento.servico_id || agendamento.servicos?.id || '');
       setDataHora(new Date(agendamento.data_hora));
       setFeedback(null);
       return;
@@ -68,15 +84,16 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
     setClienteNome('');
     setClienteTelefone('');
     setClienteValido(false);
-    setServico('');
+    setServicoId('');
     setDataHora(getInitialDateTime(selectedDate, selectedHora));
     setFeedback(null);
   }, [visible, selectedDate, selectedHora, agendamento]);
 
   const handleCriar = () => {
     setFeedback(null);
+    const servicoSelecionado = servicos.find((item) => item.id === servicoId);
 
-    if (!clienteNome || !clienteTelefone || !servico) {
+    if (!clienteNome || !clienteTelefone || !servicoId) {
       setFeedback({
         title: 'Campos incompletos',
         message: 'Preencha cliente, telefone e serviço antes de continuar.',
@@ -95,7 +112,7 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
     if (!horarioValido) {
       setFeedback({
         title: 'Horário inválido',
-        message: getHorarioAgendamentoMensagem(),
+        message: getHorarioAgendamentoMensagem(agendaConfig, dataHora),
       });
       return;
     }
@@ -103,7 +120,8 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
     const payload = {
       cliente_nome: clienteNome,
       cliente_telefone: clienteTelefone,
-      servico,
+      servico_id: servicoId,
+      servico: servicoSelecionado?.nome || '',
       data_hora: dataHora.toISOString(),
     };
 
@@ -134,7 +152,7 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
         setClienteNome('');
         setClienteTelefone('');
         setClienteValido(false);
-        setServico('');
+        setServicoId('');
         setFeedback(null);
         onClose();
       },
@@ -177,19 +195,39 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Serviço</Text>
-              <View style={styles.servicos}>
-                {servicos.map((item) => (
-                  <TouchableOpacity
-                    key={item}
-                    onPress={() => setServico(item)}
-                    style={[styles.servicoButton, servico === item && styles.servicoButtonActive]}
-                  >
-                    <Text style={[styles.servicoText, servico === item && styles.servicoTextActive]}>
-                      {item}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {isLoadingServicos ? (
+                <View style={styles.servicosLoading}>
+                  <ActivityIndicator size="small" color={COLORS.gold} />
+                </View>
+              ) : servicos.length > 0 ? (
+                <View style={styles.servicos}>
+                  {servicos.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() => setServicoId(item.id)}
+                      style={[styles.servicoButton, servicoId === item.id && styles.servicoButtonActive]}
+                    >
+                      <Text style={[styles.servicoText, servicoId === item.id && styles.servicoTextActive]}>
+                        {item.nome}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.servicoMetaText,
+                          servicoId === item.id && styles.servicoMetaTextActive
+                        ]}
+                      >
+                        R$ {Number(item.preco).toFixed(2)} • {item.duracao} min
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <FormNotice
+                  type="info"
+                  title="Nenhum serviço cadastrado"
+                  message="Cadastre pelo menos um serviço na tela de Serviços antes de criar o agendamento."
+                />
+              )}
             </View>
 
             <DateTimeField
@@ -208,7 +246,7 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
               <FormNotice
                 type="info"
                 title="Horário de atendimento"
-                message={getHorarioAgendamentoMensagem()}
+                message={getHorarioAgendamentoMensagem(agendaConfig, dataHora)}
               />
             )}
           </ScrollView>
@@ -221,10 +259,10 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
               style={[
                 styles.button,
                 styles.buttonPrimary,
-                (!clienteValido || isPending || !horarioValido) && styles.buttonPrimaryDisabled,
+                (!clienteValido || isPending || !horarioValido || !servicoId || isLoadingServicos) && styles.buttonPrimaryDisabled,
               ]}
               onPress={handleCriar}
-              disabled={isPending || !clienteValido || !horarioValido}
+              disabled={isPending || !clienteValido || !horarioValido || !servicoId || isLoadingServicos}
             >
               {isPending ? (
                 <ActivityIndicator size="small" color={COLORS.background} />
@@ -306,11 +344,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  servicosLoading: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   servicoButton: {
     backgroundColor: COLORS.background,
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: COLORS.zinc800,
     flex: 1,
@@ -321,11 +364,20 @@ const styles = StyleSheet.create({
     borderColor: COLORS.gold,
   },
   servicoText: {
-    color: COLORS.zinc400,
+    color: COLORS.white,
     fontWeight: '600',
     textAlign: 'center',
   },
   servicoTextActive: {
+    color: COLORS.background,
+  },
+  servicoMetaText: {
+    color: COLORS.zinc500,
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  servicoMetaTextActive: {
     color: COLORS.background,
   },
   actions: {

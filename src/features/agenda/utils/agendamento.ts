@@ -1,18 +1,11 @@
-export const isHorarioAgendamentoValido = (dateValue: Date | string) => {
-  const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-  const hour = date.getHours();
-  const minutes = date.getMinutes();
+import {DEFAULT_AGENDA_CONFIG, getAgendaValidationMessage, isDateTimeWithinAgenda, normalizeAgendaConfig, type AgendaConfig} from './agendaConfig';
 
-  if (hour < 8 || hour > 19) {
-    return false;
-  }
+export const isHorarioAgendamentoValido = (
+  dateValue: Date | string,
+  config: AgendaConfig = DEFAULT_AGENDA_CONFIG
+) => isDateTimeWithinAgenda(normalizeAgendaConfig(config), dateValue);
 
-  if (hour === 19 && minutes > 0) {
-    return false;
-  }
-
-  return true;
-};
-
-export const getHorarioAgendamentoMensagem = () =>
-  'Escolha um horário entre 08:00 e 19:00. O último horário disponível é 19:00.';
+export const getHorarioAgendamentoMensagem = (
+  config: AgendaConfig = DEFAULT_AGENDA_CONFIG,
+  dateValue?: Date | string
+) => getAgendaValidationMessage(normalizeAgendaConfig(config), dateValue);

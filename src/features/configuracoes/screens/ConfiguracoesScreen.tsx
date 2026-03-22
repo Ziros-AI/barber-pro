@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, StyleSheet, Switch } from 'react-native';
 import { supabase } from '../../../services/api/supabaseClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save } from 'lucide-react-native';
+import { Settings, Save, Scissors } from 'lucide-react-native';
 import { COLORS } from '../../../styles/colors';
 import { useAlert } from '../../../app/providers/AlertProvider';
 import { useNavigation } from '@react-navigation/native';
-import { Scissors } from 'lucide-react-native';
-
+import { useAuth } from '../../../app/providers/AuthProvider';
 
 interface Configuracao {
   id?: string;
@@ -20,47 +19,40 @@ interface Configuracao {
   lembretes_ativos: boolean;
 }
 
+const DEFAULT_CONFIG: Configuracao = {
+  nome_barbearia: 'Barbearia',
+  valor_corte: 50,
+  valor_barba: 40,
+  valor_corte_barba: 80,
+  horas_lembrete: 24,
+  mensagem_lembrete_template:
+    'Olá {nome}, lembrete do seu {servico} amanhã às {hora}. Te esperamos! - {barbearia}',
+  lembretes_ativos: true,
+};
+
 export default function ConfiguracoesScreen() {
   const queryClient = useQueryClient();
   const { showAlert } = useAlert();
   const navigation = useNavigation();
-  
+  const { user } = useAuth();
 
   const { data: configs = [], isLoading } = useQuery({
-    queryKey: ['configuracoes'],
+    queryKey: ['configuracoes', user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('configuracoes')
         .select('*')
+        .eq('user_id', user!.id)
         .limit(1);
 
       if (error) throw error;
       return data || [];
-    }
+    },
   });
 
-  const config = configs[0] || {
-    nome_barbearia: 'Barbearia',
-    valor_corte: 50,
-    valor_barba: 40,
-    valor_corte_barba: 80,
-    horas_lembrete: 24,
-    mensagem_lembrete_template: 'Olá {nome}, lembrete do seu {servico} amanhã às {hora}. Te esperamos! ✂️ - {barbearia}',
-    lembretes_ativos: true
-  };
+  const [novaConfig, setNovaConfig] = useState<Configuracao>(DEFAULT_CONFIG);
 
-  const [novaConfig, setNovaConfig] = useState<Configuracao>({
-    nome_barbearia: 'Barbearia',
-    valor_corte: 50,
-    valor_barba: 40,
-    valor_corte_barba: 80,
-    horas_lembrete: 24,
-    mensagem_lembrete_template:
-      'Olá {nome}, lembrete do seu {servico} amanhã às {hora}. Te esperamos! ✂️ - {barbearia}',
-    lembretes_ativos: true,
-  });
-
-  // Atualizar state quando dados carregarem
   React.useEffect(() => {
     if (configs[0]) {
       setNovaConfig({
@@ -72,30 +64,56 @@ export default function ConfiguracoesScreen() {
         valor_barba: (configs[0] as any).valor_barba ?? 40,
         valor_corte_barba: (configs[0] as any).valor_corte_barba ?? 80,
       });
+      return;
     }
+
+    setNovaConfig(DEFAULT_CONFIG);
   }, [configs]);
 
   const salvarConfig = useMutation({
     mutationFn: async (data: Configuracao) => {
-      if (configs[0]) {
-        // Atualizar configuração existente
-        const { error } = await (supabase
-          .from('configuracoes' as any)
-          .update(data as any as never)
-          .eq('id', (configs[0] as any).id) as any);
-
-        if (error) throw error;
-      } else {
-        // Criar nova configuração
-        const { error } = await (supabase
-          .from('configuracoes' as any)
-          .insert([data] as any as never) as any);
-
-        if (error) throw error;
+      if (!user?.id) {
+        throw new Error('Usuário não autenticado.');
       }
+
+      const payload = {
+        ...data,
+        user_id: user.id,
+      };
+
+      const { data: existingConfigs, error: existingConfigError } = await supabase
+        .from('configuracoes')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      if (existingConfigError) {
+        throw existingConfigError;
+      }
+
+      const existingConfigId = existingConfigs?.[0]?.id || (configs[0] as any)?.id;
+
+      if (existingConfigId) {
+        const { error } = await (supabase
+          .from('configuracoes' as any)
+          .update(payload as any as never)
+          .eq('id', existingConfigId)
+          .eq('user_id', user.id) as any);
+
+        if (error) throw error;
+        return;
+      }
+
+      const { error } = await (supabase
+        .from('configuracoes' as any)
+        .insert([payload] as any as never) as any);
+
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configuracoes'] });
+      queryClient.invalidateQueries({ queryKey: ['configuracoes', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['configuracoes', 'agenda', user?.id] });
       showAlert('Sucesso', 'Configurações salvas com sucesso!', 'success');
     },
     onError: (error) => {
@@ -104,7 +122,7 @@ export default function ConfiguracoesScreen() {
         `Não foi possível salvar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
         'error'
       );
-    }
+    },
   });
 
   if (isLoading) {
@@ -138,9 +156,7 @@ export default function ConfiguracoesScreen() {
           onPress={() => navigation.navigate('Servicos' as never)}
         >
           <Scissors color={COLORS.gold} size={20} />
-          <Text style={{ color: COLORS.white, marginLeft: 12, fontSize: 16 }}>
-            Serviços
-          </Text>
+          <Text style={{ color: COLORS.white, marginLeft: 12, fontSize: 16 }}>Serviços</Text>
         </TouchableOpacity>
       </View>
 
@@ -206,9 +222,7 @@ export default function ConfiguracoesScreen() {
               }}
               keyboardType="decimal-pad"
             />
-            <Text style={styles.hint}>
-              Estes valores serão usados ao criar novos agendamentos
-            </Text>
+            <Text style={styles.hint}>Estes valores serão usados ao criar novos agendamentos</Text>
           </View>
         </View>
 
@@ -237,7 +251,7 @@ export default function ConfiguracoesScreen() {
               placeholder="24"
               placeholderTextColor={COLORS.zinc600}
               value={String(novaConfig.horas_lembrete)}
-              onChangeText={(text) => setNovaConfig({ ...novaConfig, horas_lembrete: parseInt(text) || 24 })}
+              onChangeText={(text) => setNovaConfig({ ...novaConfig, horas_lembrete: parseInt(text, 10) || 24 })}
               keyboardType="number-pad"
             />
             <Text style={styles.hint}>Padrão: 24 horas</Text>
@@ -277,15 +291,15 @@ export default function ConfiguracoesScreen() {
         </TouchableOpacity>
 
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>ℹ️ Sobre os Lembretes</Text>
+          <Text style={styles.infoTitle}>Sobre os Lembretes</Text>
           <Text style={styles.infoText}>
-            • Lembretes são criados automaticamente quando você confirma um agendamento via WhatsApp
+            Lembretes são criados automaticamente quando você confirma um agendamento via WhatsApp.
           </Text>
           <Text style={styles.infoText}>
-            • A mensagem será enviada no horário configurado antes do agendamento
+            A mensagem será enviada no horário configurado antes do agendamento.
           </Text>
           <Text style={styles.infoText}>
-            • Use as variáveis no template para personalizar cada mensagem
+            Use as variáveis no template para personalizar cada mensagem.
           </Text>
         </View>
       </View>

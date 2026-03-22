@@ -76,22 +76,43 @@ export type Database = {
       }
       configuracoes: {
         Row: {
+          agenda_intervalo_minutos: number
+          agenda_semana: Json
           created_at: string
           id: string
+          lembretes_ativos: boolean | null
           mensagem_lembrete_template: string
           nome_barbearia: string
+          horas_lembrete: number | null
+          valor_barba: number | null
+          valor_corte: number | null
+          valor_corte_barba: number | null
         }
         Insert: {
+          agenda_intervalo_minutos?: number
+          agenda_semana?: Json
           created_at?: string
           id?: string
+          lembretes_ativos?: boolean | null
           mensagem_lembrete_template: string
           nome_barbearia: string
+          horas_lembrete?: number | null
+          valor_barba?: number | null
+          valor_corte?: number | null
+          valor_corte_barba?: number | null
         }
         Update: {
+          agenda_intervalo_minutos?: number
+          agenda_semana?: Json
           created_at?: string
           id?: string
+          lembretes_ativos?: boolean | null
           mensagem_lembrete_template?: string
           nome_barbearia?: string
+          horas_lembrete?: number | null
+          valor_barba?: number | null
+          valor_corte?: number | null
+          valor_corte_barba?: number | null
         }
         Relationships: []
       }

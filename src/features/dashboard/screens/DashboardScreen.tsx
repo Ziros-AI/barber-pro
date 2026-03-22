@@ -9,6 +9,19 @@ import { COLORS } from '../../../styles/colors';
 
 export default function DashboardScreen() {
   const [periodo, setPeriodo] = useState('hoje');
+  const { data: servicos = [] } = useQuery({
+    queryKey: ['servicos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('servicos')
+        .select('id, nome');
+
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  const servicosMap = new Map(servicos.map((servico) => [servico.id, servico]));
   
   const getDateRange = () => {
     const now = new Date();
@@ -43,12 +56,12 @@ export default function DashboardScreen() {
     refetchInterval: 30000,
     queryFn: async () => {
       const now = new Date().toISOString();
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from('agendamentos')
         .select('*')
         .gte('data_hora', now)
         .order('data_hora', { ascending: true })
-        .limit(3);
+        .limit(3) as any);
       
       if (error) throw error;
       return data || [];
@@ -207,7 +220,7 @@ export default function DashboardScreen() {
                   </View>
                   <View>
                     <Text style={styles.agendaItemClient}>{agenda.cliente_nome}</Text>
-                    <Text style={styles.agendaItemService}>{agenda.servico}</Text>
+                    <Text style={styles.agendaItemService}>{servicosMap.get(agenda.servico_id || '')?.nome || agenda.servico || 'Servico nao informado'}</Text>
                   </View>
                 </View>
                 <View style={[
