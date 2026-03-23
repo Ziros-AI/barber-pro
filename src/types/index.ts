@@ -24,6 +24,9 @@ export interface Cliente {
   nome: string;
   email: string;
   telefone: string;
+  horas_lembrete: number; 
+  mensagem_lembrete_template: string;
+   lembretes_ativos: boolean;
   created_at: string;
   updated_at: string;
 }

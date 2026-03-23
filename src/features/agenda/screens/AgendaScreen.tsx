@@ -24,7 +24,7 @@ import {
 
 const DEFAULT_CONFIG_INSERT = {
   nome_barbearia: 'Barbearia',
-  mensagem_lembrete_template: 'OlÃ¡ {nome}, lembrete do seu {servico} amanhÃ£ Ã s {hora}. Te esperamos! âœ‚ï¸ - {barbearia}',
+  mensagem_lembrete_template: 'Olá¡ {nome}, lembrete do seu {servico} amanhã às {hora}. Te esperamos! até¸ - {barbearia}',
 };
 
 const getMutationErrorMessage = (error: unknown) => {
@@ -188,8 +188,8 @@ export default function AgendaScreen() {
       agendaConfig.slotDurationMinutes
     );
 
-  const { data: agendamentos = [], isLoading } = useQuery<Agendamento[]>({
-    queryKey: ['agendamentos', format(selectedDate, 'yyyy-MM-dd')],
+  const queryLembretes = useQuery({
+    queryKey: ['configuracoes'],
     queryFn: async () => {
       const startOfDayDate = startOfDay(selectedDate).toISOString();
       const endOfDayDate = endOfDay(selectedDate).toISOString();
@@ -230,12 +230,102 @@ export default function AgendaScreen() {
           agendamento_id: agendamento.id,
           cliente_nome: agendamento.cliente_nome,
           mensagem: `ConfirmaÃ§Ã£o: ${getNomeServico(agendamento)} Ã s ${format(parseISO(agendamento.data_hora), 'HH:mm')}`,
+      const { data, error } = await supabase
+        .from('configuracoes')
+        .select('*')
+        .order('data_envio', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  const config = queryLembretes.data?.[0] as Configuracao | undefined;
+  const lembretesAtivos = config?.lembretes_ativos ?? true;
+  const horasLembrete = config?.horas_lembrete ?? 24;
+
+  const { data: agendamentoData } = useQuery<Agendamento[], Error>({
+    queryKey: ['agendamentos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('agendamentos')
+        .select(`
+        id,
+        cliente_nome,
+        cliente_telefone,
+        servico,
+        data_hora,
+        status,
+        confirmado_whatsapp,
+        created_at,
+        updated_at
+      `);
+
+      if (error) throw error;
+      return (data as Agendamento[]) || [];
+    }
+  });
+  const agendamentos = agendamentoData ?? [];
+
+
+  const confirmarWhatsApp = async (agendamento: any) => {
+    try {
+      if (!config || !lembretesAtivos) return; 
+
+      const dataAgendamento = parseISO(agendamento.data_hora);
+
+      // usa template da config (se não tiver, usa fallback)
+      const mensagem = (config.mensagem_lembrete_template ||
+        `Fala ${agendamento.cliente_nome}! Confirmado seu ${agendamento.servico.toLowerCase()} às ${format(dataAgendamento, 'HH:mm')}! ✂️`
+      )
+        .replace('{nome}', agendamento.cliente_nome)
+        .replace('{servico}', agendamento.servico)
+        .replace('{hora}', format(dataAgendamento, 'HH:mm'))
+        .replace('{barbearia}', config.nome_barbearia || '');
+
+      const msg = encodeURIComponent(mensagem);
+      const phone = agendamento.cliente_telefone?.replace(/\D/g, '');
+
+      if (phone) {
+        Linking.openURL(`https://wa.me/55${phone}?text=${msg}`);
+      }
+
+      // ✅ atualiza agendamento
+      await supabase
+        .from('agendamentos')
+        .update({
+          confirmado_whatsapp: true,
+          status: 'confirmado'
+        })
+        .eq('id', agendamento.id);
+
+      // usa horas configuradas, padrão 24
+      const horas = horasLembrete;
+
+      const dataLembrete = new Date(
+        dataAgendamento.getTime() - horas * 60 * 60 * 1000
+      );
+
+      // (opcional, mas bom) remove lembrete antigo
+      await supabase
+        .from('lembretes')
+        .delete()
+        .eq('agendamento_id', agendamento.id);
+
+      // ✅ cria lembrete
+      await supabase
+        .from('lembretes')
+        .insert({
+          agendamento_id: agendamento.id,
+          cliente_nome: agendamento.cliente_nome,
+          mensagem,
           data_envio: dataLembrete.toISOString(),
           status: 'pendente',
         });
 
       queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
       queryClient.invalidateQueries({ queryKey: ['lembretes'] });
+
     } catch (error) {
       console.error('Erro ao confirmar:', error);
     }
@@ -432,7 +522,7 @@ export default function AgendaScreen() {
     </TouchableOpacity>
   );
 
-  if (isLoading || (isLoadingAgendaConfig && !agendaConfigData && !hasAgendaConfigError)) {
+  if (queryLembretes.isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.gold} />

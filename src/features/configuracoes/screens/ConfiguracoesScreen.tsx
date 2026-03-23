@@ -117,9 +117,11 @@ export default function ConfiguracoesScreen() {
       showAlert('Sucesso', 'Configurações salvas com sucesso!', 'success');
     },
     onError: (error) => {
+      console.log('ERRO COMPLETO:', error);
+
       showAlert(
         'Erro',
-        `Não foi possível salvar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        JSON.stringify(error),
         'error'
       );
     },
