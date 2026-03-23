@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, ScrollView } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Pencil, Trash2, X } from 'lucide-react-native';
 import { COLORS } from '../../../styles/colors';
 import { useCreateProduto, useDeleteProduto, useUpdateProduto } from '../hooks/useProduto';
@@ -12,8 +12,11 @@ interface NovoProdutoModalProps {
   produto?: Produto | null;
 }
 
-export const NovoProdutoModal: React.FC<NovoProdutoModalProps> = ({ visible, onClose, produto}) => 
-  {
+export const NovoProdutoModal: React.FC<NovoProdutoModalProps> = ({
+  visible,
+  onClose,
+  produto,
+}) => {
   const [nome, setNome] = useState('');
   const [marca, setMarca] = useState('');
   const [preco, setPreco] = useState('');
@@ -138,133 +141,144 @@ export const NovoProdutoModal: React.FC<NovoProdutoModalProps> = ({ visible, onC
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>{isEditing ? 'Editar Produto' : 'Novo Produto'}</Text>
-              <Text style={styles.subtitle}>
-                {isEditing ? 'Atualize os dados do item selecionado' : 'Cadastre um item para usar no caixa'}
-              </Text>
-            </View>
-            <TouchableOpacity onPress={onClose}>
-              <X color={COLORS.white} size={24} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.content}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nome *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: Gel para cabelo"
-                placeholderTextColor={COLORS.zinc600}
-                value={nome}
-                onChangeText={setNome}
-              />
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.overlay}>
+          <View style={styles.container}>
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.title}>{isEditing ? 'Editar Produto' : 'Novo Produto'}</Text>
+                <Text style={styles.subtitle}>
+                  {isEditing ? 'Atualize os dados do item selecionado' : 'Cadastre um item para usar no caixa'}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={onClose}>
+                <X color={COLORS.white} size={24} />
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Marca</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: Linha Premium"
-                placeholderTextColor={COLORS.zinc600}
-                value={marca}
-                onChangeText={setMarca}
-              />
-            </View>
-
-            <View style={styles.row}>
-              <View style={[styles.inputGroup, styles.halfInput]}>
-                <Text style={styles.label}>Preço de venda *</Text>
+            <ScrollView
+              style={styles.content}
+              contentContainerStyle={styles.contentContainer}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Nome *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: 49.90"
+                  placeholder="Ex: Gel para cabelo"
                   placeholderTextColor={COLORS.zinc600}
-                  value={preco}
-                  onChangeText={setPreco}
-                  keyboardType="decimal-pad"
+                  value={nome}
+                  onChangeText={setNome}
                 />
               </View>
 
-              <View style={[styles.inputGroup, styles.halfInput]}>
-                <Text style={styles.label}>Preço de custo</Text>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Marca</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: 28.50"
+                  placeholder="Ex: Linha Premium"
                   placeholderTextColor={COLORS.zinc600}
-                  value={precoCusto}
-                  onChangeText={setPrecoCusto}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-            </View>
-
-            <View style={styles.row}>
-              <View style={[styles.inputGroup, styles.halfInput]}>
-                <Text style={styles.label}>Estoque atual</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex: 10"
-                  placeholderTextColor={COLORS.zinc600}
-                  value={estoque}
-                  onChangeText={setEstoque}
-                  keyboardType="number-pad"
+                  value={marca}
+                  onChangeText={setMarca}
                 />
               </View>
 
-              <View style={[styles.inputGroup, styles.halfInput]}>
-                <Text style={styles.label}>Estoque mínimo</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ex: 3"
-                  placeholderTextColor={COLORS.zinc600}
-                  value={estoqueMinimo}
-                  onChangeText={setEstoqueMinimo}
-                  keyboardType="number-pad"
-                />
-              </View>
-            </View>
-          </ScrollView>
+              <View style={styles.row}>
+                <View style={[styles.inputGroup, styles.halfInput]}>
+                  <Text style={styles.label}>Preço de venda *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex: 49.90"
+                    placeholderTextColor={COLORS.zinc600}
+                    value={preco}
+                    onChangeText={setPreco}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
 
-          <View style={styles.actions}>
-            {isEditing ? (
+                <View style={[styles.inputGroup, styles.halfInput]}>
+                  <Text style={styles.label}>Preço de custo</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex: 28.50"
+                    placeholderTextColor={COLORS.zinc600}
+                    value={precoCusto}
+                    onChangeText={setPrecoCusto}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.row}>
+                <View style={[styles.inputGroup, styles.halfInput]}>
+                  <Text style={styles.label}>Estoque atual</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex: 10"
+                    placeholderTextColor={COLORS.zinc600}
+                    value={estoque}
+                    onChangeText={setEstoque}
+                    keyboardType="number-pad"
+                  />
+                </View>
+
+                <View style={[styles.inputGroup, styles.halfInput]}>
+                  <Text style={styles.label}>Estoque mínimo</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex: 3"
+                    placeholderTextColor={COLORS.zinc600}
+                    value={estoqueMinimo}
+                    onChangeText={setEstoqueMinimo}
+                    keyboardType="number-pad"
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.actions}>
+              {isEditing ? (
+                <TouchableOpacity
+                  style={[styles.button, styles.buttonDanger]}
+                  onPress={handleExcluir}
+                  disabled={isSubmitting}
+                >
+                  <Trash2 color={COLORS.white} size={16} />
+                  <Text style={styles.buttonText}>Excluir</Text>
+                </TouchableOpacity>
+              ) : null}
+
               <TouchableOpacity
-                style={[styles.button, styles.buttonDanger]}
-                onPress={handleExcluir}
+                style={[styles.button, styles.buttonSecondary]}
+                onPress={onClose}
                 disabled={isSubmitting}
               >
-                <Trash2 color={COLORS.white} size={16} />
-                <Text style={styles.buttonText}>Excluir</Text>
+                <Text style={styles.buttonText}>Cancelar</Text>
               </TouchableOpacity>
-            ) : null}
 
-            <TouchableOpacity
-              style={[styles.button, styles.buttonSecondary]}
-              onPress={onClose}
-              disabled={isSubmitting}
-            >
-              <Text style={styles.buttonText}>Cancelar</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.button, styles.buttonPrimary]}
-              onPress={handleSalvar}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color={COLORS.background} />
-              ) : (
-                <View style={styles.primaryButtonContent}>
-                  {isEditing ? <Pencil color={COLORS.background} size={16} /> : null}
-                  <Text style={styles.buttonTextPrimary}>{isEditing ? 'Salvar' : 'Criar'}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.buttonPrimary]}
+                onPress={handleSalvar}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color={COLORS.background} />
+                ) : (
+                  <View style={styles.primaryButtonContent}>
+                    {isEditing ? <Pencil color={COLORS.background} size={16} /> : null}
+                    <Text style={styles.buttonTextPrimary}>{isEditing ? 'Salvar' : 'Criar'}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -275,12 +289,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   container: {
     backgroundColor: COLORS.cardBg,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 24,
-    maxHeight: '82%',
+    maxHeight: '70%',
   },
   header: {
     flexDirection: 'row',
@@ -302,7 +319,10 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+  },
+  contentContainer: {
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   inputGroup: {
     marginBottom: 20,
