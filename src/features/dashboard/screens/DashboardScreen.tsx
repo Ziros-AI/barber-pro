@@ -6,9 +6,11 @@ import { DollarSign, TrendingUp, ShoppingBag, Users, AlertCircle, Clock, Check, 
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO, differenceInDays, format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { COLORS } from '../../../styles/colors';
+import { useAuth } from '../../../app/providers/AuthProvider';
 
 export default function DashboardScreen() {
   const [periodo, setPeriodo] = useState('hoje');
+  const { user } = useAuth();
   const { data: servicos = [] } = useQuery({
     queryKey: ['servicos'],
     queryFn: async () => {
@@ -81,11 +83,13 @@ export default function DashboardScreen() {
   });
 
   const { data: produtos = [] } = useQuery({
-    queryKey: ['produtos-dashboard'],
+    queryKey: ['produtos-dashboard', user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('produtos')
-        .select('*');
+        .select('*')
+        .eq('user_id', user!.id);
       
       if (error) throw error;
       return data || [];
@@ -107,7 +111,7 @@ export default function DashboardScreen() {
   };
 
   // Calcular produtos com estoque baixo
-  const produtosEstoqueBaixo = produtos.filter((p: any) => p.estoque <= 5).length;
+  const produtosEstoqueBaixo = produtos.filter((p: any) => p.estoque <= p.estoque_minimo).length;
 
   // Calcular clientes que precisam retornar
   const clientesRetorno = clientes.filter((c: any) => {
