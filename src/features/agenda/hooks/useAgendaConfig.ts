@@ -32,5 +32,6 @@ export const useAgendaConfig = () => {
     queryKey: ['configuracoes', 'agenda', user?.id],
     enabled: !!user?.id,
     queryFn: () => fetchAgendaConfigByUserId(user!.id),
+    retry: false,
   });
 };

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, endOfDay, format, isSameDay, parseISO, startOfDay } from 'date-fns';
@@ -72,8 +72,25 @@ export default function AgendaScreen() {
   const { showAlert, showConfirm } = useAlert();
   const { user } = useAuth();
   const { mutate: excluirAgendamento } = useDeleteAgendamento();
-  const { data: agendaConfigData, isLoading: isLoadingAgendaConfig } = useAgendaConfig();
+  const {
+    data: agendaConfigData,
+    isLoading: isLoadingAgendaConfig,
+    error: agendaConfigError,
+    isError: hasAgendaConfigError,
+  } = useAgendaConfig();
   const agendaConfig = normalizeAgendaConfig(agendaConfigData || DEFAULT_AGENDA_CONFIG);
+
+  useEffect(() => {
+    if (!hasAgendaConfigError) {
+      return;
+    }
+
+    showAlert(
+      'Aviso',
+      `Não foi possível carregar a configuração da agenda. Usando padrão temporário. ${getMutationErrorMessage(agendaConfigError)}`,
+      'warning'
+    );
+  }, [agendaConfigError, hasAgendaConfigError, showAlert]);
 
   const { data: servicos = [] } = useQuery({
     queryKey: ['servicos'],
@@ -415,7 +432,7 @@ export default function AgendaScreen() {
     </TouchableOpacity>
   );
 
-  if (isLoading || isLoadingAgendaConfig) {
+  if (isLoading || (isLoadingAgendaConfig && !agendaConfigData && !hasAgendaConfigError)) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.gold} />
