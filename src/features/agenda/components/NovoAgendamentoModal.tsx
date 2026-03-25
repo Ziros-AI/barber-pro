@@ -121,7 +121,6 @@ export const NovoAgendamentoModal: React.FC<NovoAgendamentoModalProps> = ({
       cliente_nome: clienteNome,
       cliente_telefone: clienteTelefone,
       servico_id: servicoId,
-      servico: servicoSelecionado?.nome || '',
       data_hora: dataHora.toISOString(),
     };
 

@@ -9,7 +9,7 @@ interface CreateAgendamentoData {
   cliente_nome: string;
   cliente_telefone: string;
   servico_id: string;
-  servico: string;
+  servico?: string;
   status?: string;
   confirmado_whatsapp?: boolean;
 }
@@ -42,10 +42,12 @@ export const useCreateAgendamento = (agendaConfig?: AgendaConfig) => {
         throw new Error(getHorarioAgendamentoMensagem(agendaConfig, data.data_hora));
       }
 
+      const { servico, ...payload } = data;
+
       const { data: result, error } = await ((supabase
         .from('agendamentos')
         .insert([{
-          ...data,
+          ...payload,
           status: data.status || 'pendente',
           confirmado_whatsapp: false,
         }] as any)
@@ -77,9 +79,11 @@ export const useUpdateAgendamento = (agendaConfig?: AgendaConfig) => {
         throw new Error(getHorarioAgendamentoMensagem(agendaConfig, data.data_hora));
       }
 
+      const { servico, ...updatePayload } = data;
+
       const { data: result, error } = await ((supabase
         .from('agendamentos' as any)
-        .update(data as any as never)
+        .update(updatePayload as any)
         .eq('id', id)
         .select('*')
         .single()) as any);

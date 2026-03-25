@@ -8,6 +8,7 @@ export const fetchAgendaConfigByUserId = async (userId: string): Promise<AgendaC
     .from('configuracoes')
     .select('*')
     .eq('user_id', userId)
+    .order('created_at', { ascending: false })
     .limit(1);
 
   if (error) {
