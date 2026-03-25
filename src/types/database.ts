@@ -153,26 +153,35 @@ export type Database = {
         Row: {
           created_at: string
           estoque: number
+          estoque_minimo: number
           id: string
           marca: string
           nome: string
           preco: number
+          preco_custo: number
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           estoque?: number
+          estoque_minimo?: number
           id?: string
           marca: string
           nome: string
           preco: number
+          preco_custo?: number
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           estoque?: number
+          estoque_minimo?: number
           id?: string
           marca?: string
           nome?: string
           preco?: number
+          preco_custo?: number
+          user_id?: string | null
         }
         Relationships: []
       }

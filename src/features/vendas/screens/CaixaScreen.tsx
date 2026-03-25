@@ -7,6 +7,7 @@ import { supabase } from '../../../services/api/supabaseClient';
 import { FinalizarVendaModal } from '../components/FinalizarVendaModal';
 import { VendaDetalhesModal } from '../components/VendaDetalhesModal';
 import { COLORS } from '../../../styles/colors';
+import { useAuth } from '../../../app/providers/AuthProvider';
 
 interface ProdutoVendido {
   nome?: string;
@@ -34,6 +35,7 @@ interface VendaHistorico {
 export default function CaixaScreen() {
   const [atendimentoSelecionado, setAtendimentoSelecionado] = useState<any>(null);
   const [vendaSelecionada, setVendaSelecionada] = useState<VendaHistorico | null>(null);
+  const { user } = useAuth();
   const { data: servicos = [] } = useQuery({
     queryKey: ['servicos'],
     queryFn: async () => {
@@ -79,9 +81,14 @@ export default function CaixaScreen() {
   });
 
   const { data: produtos = [], isLoading: loadingProdutos } = useQuery({
-    queryKey: ['produtos'],
+    queryKey: ['produtos', user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from('produtos').select('*').order('nome', { ascending: true });
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('nome', { ascending: true });
 
       if (error) throw error;
       return data || [];
