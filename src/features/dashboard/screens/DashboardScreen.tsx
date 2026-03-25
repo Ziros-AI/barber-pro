@@ -224,7 +224,7 @@ export default function DashboardScreen() {
                   </View>
                   <View>
                     <Text style={styles.agendaItemClient}>{agenda.cliente_nome}</Text>
-                    <Text style={styles.agendaItemService}>{servicosMap.get(agenda.servico_id || '')?.nome || agenda.servico || 'Servico nao informado'}</Text>
+                    <Text style={styles.agendaItemService}>{servicosMap.get(agenda.servico_id || '')?.nome || agenda.servico || 'Serviço não informado'}</Text>
                   </View>
                 </View>
                 <View style={[

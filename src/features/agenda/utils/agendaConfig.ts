@@ -203,15 +203,15 @@ export const getAgendaValidationMessage = (config: AgendaConfig, dateValue?: Dat
     const dayConfig = getAgendaDayConfig(config, date);
 
     if (!dayConfig.enabled) {
-      return `O barbeiro nao atende ${DAY_LABELS[date.getDay()].toLowerCase()}.`;
+      return `O barbeiro não atende ${DAY_LABELS[date.getDay()].toLowerCase()}.`;
     }
 
     const pausesMessage = dayConfig.pauses.length
-      ? ` Pausas: ${dayConfig.pauses.map((pause) => `${pause.startTime} as ${pause.endTime}`).join(', ')}.`
+      ? ` Pausas: ${dayConfig.pauses.map((pause) => `${pause.startTime} às ${pause.endTime}`).join(', ')}.`
       : '';
 
-    return `Escolha um horario valido de ${dayConfig.startTime} ate ${dayConfig.endTime} com intervalos de ${config.slotDurationMinutes} min.${pausesMessage}`;
+    return `Escolha um horário válido de ${dayConfig.startTime} até ${dayConfig.endTime} com intervalos de ${config.slotDurationMinutes} min.${pausesMessage}`;
   }
 
-  return `Escolha um horario valido respeitando a grade configurada e intervalos de ${config.slotDurationMinutes} min.`;
+  return `Escolha um horário válido respeitando a grade configurada e intervalos de ${config.slotDurationMinutes} min.`;
 };
