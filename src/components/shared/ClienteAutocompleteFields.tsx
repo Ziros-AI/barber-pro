@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleProp, StyleSheet, Text, TextInput, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../api/supabaseClient';
+import { supabase } from '../../services/api/supabaseClient';
 import { COLORS } from '../../styles/colors';
 
 interface ClienteSugestao {
