@@ -76,40 +76,34 @@ export type Database = {
       }
       configuracoes: {
         Row: {
-          agenda_intervalo_minutos: number
-          agenda_semana: Json
           created_at: string
+          horas_lembrete: number | null
           id: string
           lembretes_ativos: boolean | null
           mensagem_lembrete_template: string
           nome_barbearia: string
-          horas_lembrete: number | null
           valor_barba: number | null
           valor_corte: number | null
           valor_corte_barba: number | null
         }
         Insert: {
-          agenda_intervalo_minutos?: number
-          agenda_semana?: Json
           created_at?: string
+          horas_lembrete?: number | null
           id?: string
           lembretes_ativos?: boolean | null
           mensagem_lembrete_template: string
           nome_barbearia: string
-          horas_lembrete?: number | null
           valor_barba?: number | null
           valor_corte?: number | null
           valor_corte_barba?: number | null
         }
         Update: {
-          agenda_intervalo_minutos?: number
-          agenda_semana?: Json
           created_at?: string
+          horas_lembrete?: number | null
           id?: string
           lembretes_ativos?: boolean | null
           mensagem_lembrete_template?: string
           nome_barbearia?: string
-          horas_lembrete?: number | null
           valor_barba?: number | null
           valor_corte?: number | null
           valor_corte_barba?: number | null
@@ -153,35 +147,26 @@ export type Database = {
         Row: {
           created_at: string
           estoque: number
-          estoque_minimo: number
           id: string
           marca: string
           nome: string
           preco: number
-          preco_custo: number
-          user_id: string | null
         }
         Insert: {
           created_at?: string
           estoque?: number
-          estoque_minimo?: number
           id?: string
           marca: string
           nome: string
           preco: number
-          preco_custo?: number
-          user_id?: string | null
         }
         Update: {
           created_at?: string
           estoque?: number
-          estoque_minimo?: number
           id?: string
           marca?: string
           nome?: string
           preco?: number
-          preco_custo?: number
-          user_id?: string | null
         }
         Relationships: []
       }
