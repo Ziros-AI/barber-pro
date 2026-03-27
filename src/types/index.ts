@@ -3,11 +3,20 @@ export interface Agendamento {
   data_hora: string;
   cliente_nome: string;
   cliente_telefone: string;
-  servico: string;
+  cliente_id?: string | null;
+  servico?: string;
+  servico_id?: string | null;
+  servicos?: {
+    id: string;
+    nome: string;
+    preco: number;
+    duracao: number;
+  } | null;
+  valor?: number;
   status: 'pendente' | 'confirmado' | 'concluido' | 'cancelado';
   confirmado_whatsapp: boolean;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface Cliente {
@@ -15,6 +24,9 @@ export interface Cliente {
   nome: string;
   email: string;
   telefone: string;
+  horas_lembrete: number; 
+  mensagem_lembrete_template: string;
+   lembretes_ativos: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -24,11 +36,18 @@ export interface Venda {
   data_hora: string;
   valor_total: number;
   valor_servico: number;
+  servico_id?: string | null;
+  servicos?: {
+    id: string;
+    nome: string;
+    preco: number;
+    duracao: number;
+  } | null;
   forma_pagamento?: string | null;
   produtos_vendidos: ProdutoVendido[];
   cliente_id?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface ProdutoVendido {
@@ -40,10 +59,13 @@ export interface ProdutoVendido {
 
 export interface Produto {
   id: string;
+  user_id?: string | null;
   nome: string;
   marca?: string;
   preco: number;
   estoque: number;
+  estoque_minimo?: number;
+  preco_custo?: number;
   created_at: string;
   updated_at: string;
 }
@@ -56,7 +78,7 @@ export interface Lembrete {
   data_envio: string;
   status: 'pendente' | 'enviado';
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface Configuracao {
@@ -65,4 +87,14 @@ export interface Configuracao {
   horas_lembrete: number;
   mensagem_lembrete_template: string;
   lembretes_ativos: boolean;
+  agenda_intervalo_minutos?: number;
+  agenda_semana?: {
+    enabled: boolean;
+    startTime: string;
+    endTime: string;
+    pauses: {
+      startTime: string;
+      endTime: string;
+    }[];
+  }[];
 }

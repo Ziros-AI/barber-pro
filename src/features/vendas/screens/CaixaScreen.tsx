@@ -7,6 +7,7 @@ import { supabase } from '../../../services/api/supabaseClient';
 import { FinalizarVendaModal } from '../components/FinalizarVendaModal';
 import { VendaDetalhesModal } from '../components/VendaDetalhesModal';
 import { COLORS } from '../../../styles/colors';
+import { useAuth } from '../../../app/providers/AuthProvider';
 
 interface ProdutoVendido {
   nome?: string;
@@ -19,8 +20,13 @@ interface VendaHistorico {
   created_at: string;
   valor_total: number;
   valor_servico: number;
+  servico_id?: string | null;
   forma_pagamento?: string | null;
   produtos_vendidos?: ProdutoVendido[] | null;
+  servicos?: {
+    nome?: string | null;
+    preco?: number | null;
+  } | null;
   cliente?: {
     nome?: string | null;
   } | null;
@@ -29,6 +35,20 @@ interface VendaHistorico {
 export default function CaixaScreen() {
   const [atendimentoSelecionado, setAtendimentoSelecionado] = useState<any>(null);
   const [vendaSelecionada, setVendaSelecionada] = useState<VendaHistorico | null>(null);
+  const { user } = useAuth();
+  const { data: servicos = [] } = useQuery({
+    queryKey: ['servicos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('servicos')
+        .select('id, nome, preco, duracao');
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const servicosMap = new Map(servicos.map((servico) => [servico.id, servico]));
 
   const { data: agendamentos = [], isLoading: loadingAgendamentos } = useQuery({
     queryKey: ['agendamentos-hoje-confirmados'],
@@ -46,13 +66,13 @@ export default function CaixaScreen() {
 
       if (errorAtualizacao) throw errorAtualizacao;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from('agendamentos')
         .select('*')
         .gte('data_hora', inicioDoDia)
         .lte('data_hora', horarioAtual)
         .eq('status', 'confirmado')
-        .order('data_hora', { ascending: true });
+        .order('data_hora', { ascending: true }) as any);
 
       if (error) throw error;
       return data || [];
@@ -61,9 +81,14 @@ export default function CaixaScreen() {
   });
 
   const { data: produtos = [], isLoading: loadingProdutos } = useQuery({
-    queryKey: ['produtos'],
+    queryKey: ['produtos', user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from('produtos').select('*').order('nome', { ascending: true });
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('nome', { ascending: true });
 
       if (error) throw error;
       return data || [];
@@ -75,7 +100,7 @@ export default function CaixaScreen() {
     queryFn: async () => {
       const hoje = new Date();
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from('vendas')
         .select(
           `
@@ -83,6 +108,7 @@ export default function CaixaScreen() {
             created_at,
             valor_total,
             valor_servico,
+            servico_id,
             forma_pagamento,
             produtos_vendidos,
             cliente:clientes(nome)
@@ -90,7 +116,7 @@ export default function CaixaScreen() {
         )
         .gte('created_at', startOfDay(hoje).toISOString())
         .lte('created_at', endOfDay(hoje).toISOString())
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as any);
 
       if (error) throw error;
       return (data || []) as VendaHistorico[];
@@ -113,7 +139,7 @@ export default function CaixaScreen() {
       <ScrollView style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Caixa</Text>
-          <Text style={styles.subtitle}>Finalize os atendimentos de hoje ate o horario atual</Text>
+          <Text style={styles.subtitle}>Finalize os atendimentos de hoje até o horário atual</Text>
         </View>
 
         <View style={styles.content}>
@@ -126,20 +152,28 @@ export default function CaixaScreen() {
 
           {agendamentos.length > 0 && (
             <>
-              <Text style={styles.sectionTitle}>Pendentes de Finalizacao</Text>
+              <Text style={styles.sectionTitle}>Pendentes de finalização</Text>
               {agendamentos.map((agendamento: any) => (
                 <View key={agendamento.id} style={styles.agendamentoCard}>
                   <View style={styles.agendamentoHeader}>
                     <View style={styles.agendamentoInfo}>
                       <Text style={styles.clienteNome}>{agendamento.cliente_nome}</Text>
-                      <Text style={styles.servico}>{agendamento.servico}</Text>
-                      <Text style={styles.valor}>R$ {(agendamento.valor || 50).toFixed(2)}</Text>
+                      <Text style={styles.servico}>{servicosMap.get(agendamento.servico_id)?.nome || agendamento.servico || 'Serviço não informado'}</Text>
+                      <Text style={styles.valor}>R$ {Number(servicosMap.get(agendamento.servico_id)?.preco || agendamento.valor || 0).toFixed(2)}</Text>
                     </View>
                     <View style={styles.iconCircleGreen}>
                       <Check color={COLORS.white} size={20} />
                     </View>
                   </View>
-                  <TouchableOpacity style={styles.finalizarButton} onPress={() => setAtendimentoSelecionado(agendamento)}>
+                  <TouchableOpacity
+                    style={styles.finalizarButton}
+                    onPress={() =>
+                      setAtendimentoSelecionado({
+                        ...agendamento,
+                        servicos: servicosMap.get(agendamento.servico_id) || null
+                      })
+                    }
+                  >
                     <Text style={styles.finalizarButtonText}>Finalizar Atendimento</Text>
                   </TouchableOpacity>
                 </View>
@@ -149,7 +183,7 @@ export default function CaixaScreen() {
 
           {vendas.length > 0 && (
             <>
-              <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Historico de Hoje</Text>
+              <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Histórico de hoje</Text>
               {vendas.map((venda) => (
                 <TouchableOpacity
                   key={venda.id}
@@ -160,8 +194,10 @@ export default function CaixaScreen() {
                   <View style={styles.vendaHeader}>
                     <View style={styles.vendaInfo}>
                       <Text style={styles.vendaValor}>R$ {venda.valor_total.toFixed(2)}</Text>
-                      <Text style={styles.vendaCliente}>{venda.cliente?.nome?.trim() || 'Cliente nao informado'}</Text>
-                      <Text style={styles.vendaServico}>Serviço: R$ {venda.valor_servico.toFixed(2)}</Text>
+                      <Text style={styles.vendaCliente}>{venda.cliente?.nome?.trim() || 'Cliente não informado'}</Text>
+                      <Text style={styles.vendaServico}>
+                        Serviço: {servicosMap.get(venda.servico_id || '')?.nome || 'Não informado'} • R$ {venda.valor_servico.toFixed(2)}
+                      </Text>
                       {venda.produtos_vendidos?.length ? (
                         <Text style={styles.vendaServico}>{venda.produtos_vendidos.length} produto(s)</Text>
                       ) : null}

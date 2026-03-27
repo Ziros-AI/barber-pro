@@ -17,6 +17,9 @@ interface VendaDetalhes {
   created_at: string;
   valor_total: number;
   valor_servico: number;
+  servicos?: {
+    nome?: string | null;
+  } | null;
   forma_pagamento?: string | null;
   produtos_vendidos?: ProdutoVendido[] | null;
   cliente?: {
@@ -67,7 +70,9 @@ export const VendaDetalhesModal: React.FC<VendaDetalhesModalProps> = ({ visible,
               </View>
               <View style={styles.row}>
                 <Text style={styles.label}>Serviço</Text>
-                <Text style={styles.value}>{formatCurrency(venda.valor_servico || 0)}</Text>
+                <Text style={styles.value}>
+                  {venda.servicos?.nome ? `${venda.servicos.nome} • ` : ''}{formatCurrency(venda.valor_servico || 0)}
+                </Text>
               </View>
               <View style={styles.row}>
                 <Text style={styles.label}>Pagamento</Text>
