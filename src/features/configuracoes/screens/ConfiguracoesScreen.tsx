@@ -44,6 +44,7 @@ export default function ConfiguracoesScreen() {
         .from('configuracoes')
         .select('*')
         .eq('user_id', user!.id)
+        .order('created_at', { ascending: false })
         .limit(1);
 
       if (error) throw error;
@@ -76,8 +77,9 @@ export default function ConfiguracoesScreen() {
         throw new Error('Usuário não autenticado.');
       }
 
+      const { id: _omitId, ...campos } = data;
       const payload = {
-        ...data,
+        ...campos,
         user_id: user.id,
       };
 
@@ -117,9 +119,11 @@ export default function ConfiguracoesScreen() {
       showAlert('Sucesso', 'Configurações salvas com sucesso!', 'success');
     },
     onError: (error) => {
+      console.log('ERRO COMPLETO:', error);
+
       showAlert(
         'Erro',
-        `Não foi possível salvar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        JSON.stringify(error),
         'error'
       );
     },
