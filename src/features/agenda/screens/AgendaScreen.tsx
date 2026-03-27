@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, endOfDay, format, isSameDay, parseISO, startOfDay } from 'date-fns';
@@ -21,10 +21,14 @@ import {
   normalizeAgendaConfig,
   type AgendaConfig,
 } from '../utils/agendaConfig';
+import { applyReminderTemplate, parseLembretesAtivos } from '../utils/reminderTemplate';
+
+const DEFAULT_LEMBRETE_TEMPLATE =
+  'Olá {nome}, lembrete do seu {servico} amanhã às {hora}. Te esperamos! - {barbearia}';
 
 const DEFAULT_CONFIG_INSERT = {
   nome_barbearia: 'Barbearia',
-  mensagem_lembrete_template: 'OlÃ¡ {nome}, lembrete do seu {servico} amanhÃ£ Ã s {hora}. Te esperamos! âœ‚ï¸ - {barbearia}',
+  mensagem_lembrete_template: DEFAULT_LEMBRETE_TEMPLATE,
 };
 
 const getMutationErrorMessage = (error: unknown) => {
@@ -49,7 +53,7 @@ const getMutationErrorMessage = (error: unknown) => {
     );
   }
 
-  return 'erro desconhecido';
+  return 'Erro desconhecido';
 };
 
 const addMinutesToTime = (time: string, minutesToAdd: number) => {
@@ -62,6 +66,9 @@ const addMinutesToTime = (time: string, minutesToAdd: number) => {
   return `${String(nextHours).padStart(2, '0')}:${String(nextMinutes).padStart(2, '0')}`;
 };
 
+const agendamentoReservaHorarioNaGrade = (a: Agendamento) =>
+  a.status === 'pendente' || a.status === 'confirmado';
+
 export default function AgendaScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [modalVisible, setModalVisible] = useState(false);
@@ -72,8 +79,25 @@ export default function AgendaScreen() {
   const { showAlert, showConfirm } = useAlert();
   const { user } = useAuth();
   const { mutate: excluirAgendamento } = useDeleteAgendamento();
-  const { data: agendaConfigData, isLoading: isLoadingAgendaConfig } = useAgendaConfig();
+  const {
+    data: agendaConfigData,
+    isLoading: isLoadingAgendaConfig,
+    error: agendaConfigError,
+    isError: hasAgendaConfigError,
+  } = useAgendaConfig();
   const agendaConfig = normalizeAgendaConfig(agendaConfigData || DEFAULT_AGENDA_CONFIG);
+
+  useEffect(() => {
+    if (!hasAgendaConfigError) {
+      return;
+    }
+
+    showAlert(
+      'Aviso',
+      `Não foi possível carregar a configuração da agenda. Usando padrão temporário. ${getMutationErrorMessage(agendaConfigError)}`,
+      'warning'
+    );
+  }, [agendaConfigError, hasAgendaConfigError, showAlert]);
 
   const { data: servicos = [] } = useQuery({
     queryKey: ['servicos'],
@@ -147,7 +171,7 @@ export default function AgendaScreen() {
       console.error('Erro ao salvar escala da agenda:', error);
       showAlert(
         'Erro',
-        `NÃ£o foi possÃ­vel salvar a escala: ${getMutationErrorMessage(error)}`,
+        `Não foi possível salvar a escala: ${getMutationErrorMessage(error)}`,
         'error'
       );
     },
@@ -162,7 +186,7 @@ export default function AgendaScreen() {
     servicosMap.get(agendamento.servico_id || '')?.nome ||
     agendamento.servicos?.nome ||
     agendamento.servico ||
-    'Servico nao informado';
+    'Serviço não informado';
 
   const getDuracaoServico = (agendamento: Agendamento) =>
     Number(
@@ -171,18 +195,36 @@ export default function AgendaScreen() {
       agendaConfig.slotDurationMinutes
     );
 
-  const { data: agendamentos = [], isLoading } = useQuery<Agendamento[]>({
-    queryKey: ['agendamentos', format(selectedDate, 'yyyy-MM-dd')],
+  const queryConfiguracoes = useQuery({
+    queryKey: ['configuracoes', user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('configuracoes')
+        .select('*')
+        .eq('user_id', user?.id || '')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        throw error;
+      }
+
+      return data?.[0] || null;
+    },
+  });
+  const { data: agendamentoData = [] } = useQuery<Agendamento[], Error>({
+    queryKey: ['agendamentos', selectedDate],
     queryFn: async () => {
       const startOfDayDate = startOfDay(selectedDate).toISOString();
       const endOfDayDate = endOfDay(selectedDate).toISOString();
 
-      const { data, error } = await (supabase
+      const { data, error } = await supabase
         .from('agendamentos')
         .select('*')
         .gte('data_hora', startOfDayDate)
         .lte('data_hora', endOfDayDate)
-        .order('data_hora', { ascending: true }) as any);
+        .order('data_hora', { ascending: true });
 
       if (error) {
         throw error;
@@ -191,34 +233,104 @@ export default function AgendaScreen() {
       return (data || []) as Agendamento[];
     },
   });
+  const agendamentos = agendamentoData;
 
-  const confirmarWhatsApp = async (agendamento: Agendamento) => {
+
+  const confirmarWhatsApp = async (agendamento: any) => {
     try {
-      const msg = encodeURIComponent(
-        `Fala ${agendamento.cliente_nome}! Confirmado seu ${getNomeServico(agendamento).toLowerCase()} hoje Ã s ${format(parseISO(agendamento.data_hora), 'HH:mm')}? Te espero aqui! âœ‚ï¸`
-      );
-      const phone = agendamento.cliente_telefone.replace(/\D/g, '');
-      await Linking.openURL(`https://wa.me/55${phone}?text=${msg}`);
+      if (!user?.id) {
+        return;
+      }
 
-      await (supabase.from('agendamentos') as any)
+      const { data: configRows, error: configError } = await supabase
+        .from('configuracoes')
+        .select('nome_barbearia, mensagem_lembrete_template, lembretes_ativos, horas_lembrete')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (configError) {
+        console.error('Erro ao carregar configurações (WhatsApp):', configError);
+      }
+
+      const row = (configRows?.[0] ?? {}) as {
+        nome_barbearia?: string | null;
+        mensagem_lembrete_template?: string | null;
+        lembretes_ativos?: boolean | null;
+        horas_lembrete?: number | null;
+      };
+
+      const nomeBarbearia =
+        String(row.nome_barbearia ?? '').trim() || DEFAULT_CONFIG_INSERT.nome_barbearia;
+      const templateSalvo = String(row.mensagem_lembrete_template ?? '').trim();
+      const lembretesAtivosConfirm = parseLembretesAtivos(row.lembretes_ativos);
+      const horasLembreteConfirm = Number(row.horas_lembrete) > 0 ? Number(row.horas_lembrete) : 24;
+
+      const dataAgendamento = parseISO(agendamento.data_hora);
+      const servicoNome = getNomeServico(agendamento);
+      const horaFormatada = format(dataAgendamento, 'HH:mm');
+
+      const vars = {
+        nome: agendamento.cliente_nome,
+        servico: servicoNome,
+        hora: horaFormatada,
+        barbearia: nomeBarbearia,
+      };
+
+      const textoConfirmacaoWhatsApp = `Fala ${agendamento.cliente_nome}! Confirmado seu ${servicoNome.toLowerCase()} às ${horaFormatada}! ✂️`;
+
+      let mensagemWhatsApp: string;
+      let mensagemLembrete: string;
+      let dataLembrete: Date;
+
+      if (lembretesAtivosConfirm) {
+        const templateBase = templateSalvo || DEFAULT_LEMBRETE_TEMPLATE;
+        const preenchido = applyReminderTemplate(templateBase, vars);
+        mensagemWhatsApp = preenchido;
+        mensagemLembrete = preenchido;
+        dataLembrete = new Date(dataAgendamento.getTime() - horasLembreteConfirm * 60 * 60 * 1000);
+      } else {
+        mensagemWhatsApp = textoConfirmacaoWhatsApp;
+        mensagemLembrete = `Confirmação de agendamento para ${format(dataAgendamento, 'dd/MM/yyyy HH:mm')}`;
+        dataLembrete = addDays(dataAgendamento, -1);
+      }
+
+      const msg = encodeURIComponent(mensagemWhatsApp);
+      const phone = agendamento.cliente_telefone?.replace(/\D/g, '');
+
+      if (phone) {
+        Linking.openURL(`https://wa.me/55${phone}?text=${msg}`);
+      }
+
+      // ✅ atualiza agendamento
+      await supabase
+        .from('agendamentos')
         .update({
           confirmado_whatsapp: true,
-          status: 'confirmado',
+          status: 'confirmado'
         })
         .eq('id', agendamento.id);
 
-      const dataLembrete = addDays(parseISO(agendamento.data_hora), -1);
-      await (supabase.from('lembretes') as any)
+      // (opcional, mas bom) remove lembrete antigo
+      await supabase
+        .from('lembretes')
+        .delete()
+        .eq('agendamento_id', agendamento.id);
+
+      // ✅ cria lembrete
+      await supabase
+        .from('lembretes')
         .insert({
           agendamento_id: agendamento.id,
           cliente_nome: agendamento.cliente_nome,
-          mensagem: `ConfirmaÃ§Ã£o: ${getNomeServico(agendamento)} Ã s ${format(parseISO(agendamento.data_hora), 'HH:mm')}`,
+          mensagem: mensagemLembrete,
           data_envio: dataLembrete.toISOString(),
           status: 'pendente',
         });
 
       queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
       queryClient.invalidateQueries({ queryKey: ['lembretes'] });
+
     } catch (error) {
       console.error('Erro ao confirmar:', error);
     }
@@ -290,7 +402,15 @@ export default function AgendaScreen() {
 
   const slotsRenderizados = useMemo(() => {
     const items: Array<
-      | { type: 'agendamento'; hora: string; agendamento: Agendamento; duration: number; span: number; endTime: string }
+      | {
+          type: 'agendamento';
+          hora: string;
+          agendamento: Agendamento;
+          duration: number;
+          span: number;
+          endTime: string;
+          slotEmConflito: boolean;
+        }
       | { type: 'disponivel'; hora: string }
     > = [];
 
@@ -298,6 +418,12 @@ export default function AgendaScreen() {
       const hora = horariosDoDia[index];
       const ocupacoesNoHorario = ocupacaoPorHorario[hora] || [];
       const agendamentosIniciando = ocupacoesNoHorario.filter((item) => item.isStart);
+      const idsReservandoEsteSlot = new Set(
+        ocupacoesNoHorario
+          .filter((item) => agendamentoReservaHorarioNaGrade(item.agendamento))
+          .map((item) => item.agendamento.id)
+      );
+      const slotEmConflito = idsReservandoEsteSlot.size > 1;
 
       if (agendamentosIniciando.length > 0) {
         agendamentosIniciando.forEach(({ agendamento, duration, span }) => {
@@ -308,6 +434,7 @@ export default function AgendaScreen() {
             duration,
             span,
             endTime: addMinutesToTime(hora, duration),
+            slotEmConflito,
           });
         });
 
@@ -342,7 +469,7 @@ export default function AgendaScreen() {
   const handleExcluirAgendamento = (agendamento: Agendamento) => {
     showConfirm(
       'Excluir agendamento',
-      `Deseja excluir o agendamento de ${agendamento.cliente_nome} Ã s ${format(parseISO(agendamento.data_hora), 'HH:mm')}?`,
+      `Deseja excluir o agendamento de ${agendamento.cliente_nome} às ${format(parseISO(agendamento.data_hora), 'HH:mm')}?`,
       [
         {
           text: 'Cancelar',
@@ -355,7 +482,7 @@ export default function AgendaScreen() {
             excluirAgendamento(agendamento.id, {
               onError: (error) => {
                 console.error('Erro ao excluir agendamento:', error);
-                showAlert('Erro', 'NÃ£o foi possÃ­vel excluir o agendamento.', 'error');
+                showAlert('Erro', 'Não foi possível excluir o agendamento.', 'error');
               },
             });
           },
@@ -366,19 +493,29 @@ export default function AgendaScreen() {
 
   const renderAgendamentoCard = (
     agendamento: Agendamento,
-    options?: { horaExibida?: string; duration?: number; span?: number; endTime?: string }
+    options?: {
+      horaExibida?: string;
+      duration?: number;
+      span?: number;
+      endTime?: string;
+      slotEmConflito?: boolean;
+    }
   ) => (
     <TouchableOpacity
       key={agendamento.id}
       style={[
         styles.agendamentoCard,
         options?.span && options.span > 1 ? { minHeight: options.span * 86 } : null,
+        options?.slotEmConflito ? styles.agendamentoCardConflito : null,
       ]}
       activeOpacity={0.9}
       onPress={() => abrirEdicaoAgendamento(agendamento)}
     >
       <View style={styles.agendamentoHeader}>
         <View style={styles.agendamentoInfo}>
+          {options?.slotEmConflito ? (
+            <Text style={styles.conflitoBadge}>Sobreposição de horário</Text>
+          ) : null}
           <Text style={styles.clienteNome}>{agendamento.cliente_nome}</Text>
           <Text style={styles.servico}>{getNomeServico(agendamento)}</Text>
           <Text style={styles.duracaoText}>
@@ -415,7 +552,7 @@ export default function AgendaScreen() {
     </TouchableOpacity>
   );
 
-  if (isLoading || isLoadingAgendaConfig) {
+  if (queryConfiguracoes.isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.gold} />
@@ -486,7 +623,7 @@ export default function AgendaScreen() {
                   <Text style={styles.summaryText}>{agendaConfig.slotDurationMinutes} min</Text>
                 </View>
               ) : (
-                <Text style={styles.summaryText}>Ative este dia para liberar horarios na grade.</Text>
+                <Text style={styles.summaryText}>Ative este dia para liberar horários na grade.</Text>
               )}
               {dayConfig.enabled && dayConfig.pauses.length > 0 && (
                 <View style={styles.summaryPausesRow}>
@@ -506,7 +643,7 @@ export default function AgendaScreen() {
 
           {agendamentosForaDaEscala.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Horarios fora da escala</Text>
+              <Text style={styles.sectionTitle}>Horários fora da escala</Text>
               <Text style={styles.sectionSubtitle}>
                 Esses agendamentos foram criados fora da grade configurada para este dia.
               </Text>
@@ -532,6 +669,7 @@ export default function AgendaScreen() {
                       duration: item.duration,
                       span: item.span,
                       endTime: item.endTime,
+                      slotEmConflito: item.slotEmConflito,
                     })}
                   </View>
                 ) : (
@@ -751,6 +889,19 @@ const styles = StyleSheet.create({
     padding: 16,
     borderLeftWidth: 4,
     borderLeftColor: COLORS.gold,
+  },
+  agendamentoCardConflito: {
+    borderLeftColor: COLORS.red,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.45)',
+  },
+  conflitoBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.red,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 6,
   },
   cardActions: {
     flexDirection: 'row',

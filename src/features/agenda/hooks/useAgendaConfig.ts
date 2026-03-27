@@ -8,6 +8,7 @@ export const fetchAgendaConfigByUserId = async (userId: string): Promise<AgendaC
     .from('configuracoes')
     .select('*')
     .eq('user_id', userId)
+    .order('created_at', { ascending: false })
     .limit(1);
 
   if (error) {
@@ -32,5 +33,6 @@ export const useAgendaConfig = () => {
     queryKey: ['configuracoes', 'agenda', user?.id],
     enabled: !!user?.id,
     queryFn: () => fetchAgendaConfigByUserId(user!.id),
+    retry: false,
   });
 };
