@@ -15,9 +15,11 @@ import LembretesScreen from '../../features/lembretes/screens/LembretesScreen';
 import LoginScreen from '../../features/auth/screens/LoginScreen';
 import ConfiguracoesScreen from '../../features/configuracoes/screens/ConfiguracoesScreen';
 import ProdutosScreen from '../../features/produtos/screens/ProdutosScreen';
+import { ServicosScreen } from '../../features/configuracoes/servicos/screens';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const ConfigStack = createNativeStackNavigator();
 
 const TabNavigator = () => {
   return (
@@ -76,7 +78,7 @@ const TabNavigator = () => {
       />
       <Tab.Screen
         name="Configurações"
-        component={ConfiguracoesScreen}
+        component={ConfigStackNavigator}
         options={{
           tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
         }}
@@ -84,6 +86,15 @@ const TabNavigator = () => {
     </Tab.Navigator>
   );
 };
+
+function ConfigStackNavigator() {
+  return (
+    <ConfigStack.Navigator screenOptions={{ headerShown: false }}>
+      <ConfigStack.Screen name="ConfiguracoesMain" component={ConfiguracoesScreen} />
+      <ConfigStack.Screen name="Servicos" component={ServicosScreen} />
+    </ConfigStack.Navigator>
+  );
+}
 
 const AppNavigator = () => {
   const { isLoadingAuth, isAuthenticated } = useAuth();
@@ -102,7 +113,9 @@ const AppNavigator = () => {
         {!isAuthenticated ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
-          <Stack.Screen name="Main" component={TabNavigator} />
+          <>
+            <Stack.Screen name="Main" component={TabNavigator} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>
