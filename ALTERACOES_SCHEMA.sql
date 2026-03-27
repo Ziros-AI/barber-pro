@@ -49,3 +49,9 @@ drop constraint if exists configuracoes_agenda_intervalo_minutos_check;
 alter table public.configuracoes
 add constraint configuracoes_agenda_intervalo_minutos_check
 check (agenda_intervalo_minutos in (15, 30, 45, 60));
+
+alter table public.produtos
+add column if not exists estoque_minimo integer not null default 0;
+
+alter table public.produtos
+add column if not exists preco_custo numeric not null default 0;

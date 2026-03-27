@@ -7,6 +7,7 @@ import { supabase } from '../../../services/api/supabaseClient';
 import { FinalizarVendaModal } from '../components/FinalizarVendaModal';
 import { VendaDetalhesModal } from '../components/VendaDetalhesModal';
 import { COLORS } from '../../../styles/colors';
+import { useAuth } from '../../../app/providers/AuthProvider';
 
 interface ProdutoVendido {
   nome?: string;
@@ -34,6 +35,7 @@ interface VendaHistorico {
 export default function CaixaScreen() {
   const [atendimentoSelecionado, setAtendimentoSelecionado] = useState<any>(null);
   const [vendaSelecionada, setVendaSelecionada] = useState<VendaHistorico | null>(null);
+  const { user } = useAuth();
   const { data: servicos = [] } = useQuery({
     queryKey: ['servicos'],
     queryFn: async () => {
@@ -79,9 +81,14 @@ export default function CaixaScreen() {
   });
 
   const { data: produtos = [], isLoading: loadingProdutos } = useQuery({
-    queryKey: ['produtos'],
+    queryKey: ['produtos', user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from('produtos').select('*').order('nome', { ascending: true });
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('nome', { ascending: true });
 
       if (error) throw error;
       return data || [];
@@ -132,7 +139,7 @@ export default function CaixaScreen() {
       <ScrollView style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Caixa</Text>
-          <Text style={styles.subtitle}>Finalize os atendimentos de hoje ate o horario atual</Text>
+          <Text style={styles.subtitle}>Finalize os atendimentos de hoje até o horário atual</Text>
         </View>
 
         <View style={styles.content}>
@@ -145,13 +152,13 @@ export default function CaixaScreen() {
 
           {agendamentos.length > 0 && (
             <>
-              <Text style={styles.sectionTitle}>Pendentes de Finalizacao</Text>
+              <Text style={styles.sectionTitle}>Pendentes de finalização</Text>
               {agendamentos.map((agendamento: any) => (
                 <View key={agendamento.id} style={styles.agendamentoCard}>
                   <View style={styles.agendamentoHeader}>
                     <View style={styles.agendamentoInfo}>
                       <Text style={styles.clienteNome}>{agendamento.cliente_nome}</Text>
-                      <Text style={styles.servico}>{servicosMap.get(agendamento.servico_id)?.nome || agendamento.servico || 'Servico nao informado'}</Text>
+                      <Text style={styles.servico}>{servicosMap.get(agendamento.servico_id)?.nome || agendamento.servico || 'Serviço não informado'}</Text>
                       <Text style={styles.valor}>R$ {Number(servicosMap.get(agendamento.servico_id)?.preco || agendamento.valor || 0).toFixed(2)}</Text>
                     </View>
                     <View style={styles.iconCircleGreen}>
@@ -176,7 +183,7 @@ export default function CaixaScreen() {
 
           {vendas.length > 0 && (
             <>
-              <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Historico de Hoje</Text>
+              <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Histórico de hoje</Text>
               {vendas.map((venda) => (
                 <TouchableOpacity
                   key={venda.id}
@@ -187,9 +194,9 @@ export default function CaixaScreen() {
                   <View style={styles.vendaHeader}>
                     <View style={styles.vendaInfo}>
                       <Text style={styles.vendaValor}>R$ {venda.valor_total.toFixed(2)}</Text>
-                      <Text style={styles.vendaCliente}>{venda.cliente?.nome?.trim() || 'Cliente nao informado'}</Text>
+                      <Text style={styles.vendaCliente}>{venda.cliente?.nome?.trim() || 'Cliente não informado'}</Text>
                       <Text style={styles.vendaServico}>
-                        Serviço: {servicosMap.get(venda.servico_id || '')?.nome || 'Nao informado'} • R$ {venda.valor_servico.toFixed(2)}
+                        Serviço: {servicosMap.get(venda.servico_id || '')?.nome || 'Não informado'} • R$ {venda.valor_servico.toFixed(2)}
                       </Text>
                       {venda.produtos_vendidos?.length ? (
                         <Text style={styles.vendaServico}>{venda.produtos_vendidos.length} produto(s)</Text>

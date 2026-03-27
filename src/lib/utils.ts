@@ -66,5 +66,5 @@ export function mapClienteError(error: unknown): Error {
     }
   }
 
-  return new Error(getErrorMessage(error, 'Nao foi possivel salvar o cliente.'));
+  return new Error(getErrorMessage(error, 'Não foi possível salvar o cliente.'));
 }

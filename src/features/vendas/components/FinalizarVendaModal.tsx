@@ -54,7 +54,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({ visibl
   const queryClient = useQueryClient();
   const { showAlert, showConfirm } = useAlert();
 
-  const nomeServico = agendamento.servicos?.nome || agendamento.servico || 'Servico nao informado';
+  const nomeServico = agendamento.servicos?.nome || agendamento.servico || 'Serviço não informado';
   const valorServico = agendamento.servicos?.preco || agendamento.valor || 50;
   const valorProdutos = produtosSelecionados.reduce((sum, p) => sum + p.subtotal, 0);
   const valorTotal = valorServico + valorProdutos;
@@ -152,7 +152,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({ visibl
         const produtoAtual = produtos.find((produto) => produto.id === item.produto_id);
 
         if (!produtoAtual) {
-          throw new Error(`Produto nao encontrado: ${item.nome}`);
+          throw new Error(`Produto não encontrado: ${item.nome}`);
         }
 
         if (produtoAtual.estoque < item.quantidade) {
@@ -205,7 +205,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({ visibl
         'success'
       );
     } catch (error) {
-      showAlert('Nao foi possivel finalizar', getErrorMessage(error), 'error');
+      showAlert('Não foi possível finalizar', getErrorMessage(error), 'error');
     } finally {
       setFinalizando(false);
     }

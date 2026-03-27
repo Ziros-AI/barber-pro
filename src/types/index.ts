@@ -59,10 +59,13 @@ export interface ProdutoVendido {
 
 export interface Produto {
   id: string;
+  user_id?: string | null;
   nome: string;
   marca?: string;
   preco: number;
   estoque: number;
+  estoque_minimo?: number;
+  preco_custo?: number;
   created_at: string;
   updated_at: string;
 }
