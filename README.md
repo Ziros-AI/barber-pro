@@ -36,6 +36,22 @@ npm start
 # Escaneie QR Code com Expo Go
 ```
 
+### 6. (Opcional) Página pública de agendamento
+
+No repositório há uma **Edge Function** `public-booking` e o site estático `../booking-web/` para o cliente agendar sem login.
+
+1. Instale o [Supabase CLI](https://supabase.com/docs/guides/cli), faça login e linke o projeto.
+2. Defina o secret **`BOOKING_OWNER_USER_ID`** com o UUID do usuário de autenticação da barbearia (o mesmo que aparece em `auth.users.id` ao logar no app). Opcional: **`BOOKING_TIMEZONE`** (padrão `America/Sao_Paulo`).
+3. Faça o deploy da função:
+   ```bash
+   cd ..   # raiz BarberPro (pasta que contém supabase/)
+   supabase secrets set BOOKING_OWNER_USER_ID=<uuid-do-usuario-auth>
+   supabase functions deploy public-booking --project-ref <seu-project-ref>
+   ```
+4. Na pasta `booking-web/`, copie `.env.example` para `.env`, preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`, depois `npm install && npm run dev` (ou `npm run build` e publique a pasta `dist` em qualquer hospedagem estática).
+
+A função usa a **service role** só no servidor; o front chama a função com a anon key. Os serviços exibidos são os da tabela `servicos` com `user_id` igual ao `BOOKING_OWNER_USER_ID`. Serviços criados antes desta versão podem ter `user_id` nulo; nesse caso atualize no SQL Editor: `update public.servicos set user_id = '<uuid>' where user_id is null;` (use o mesmo UUID do secret).
+
 ---
 
 ## ✨ Funcionalidades Principais

@@ -21,12 +21,18 @@ export const useCreateServico = () => {
 
   return useMutation({
     mutationFn: async (data: CreateServicoDTO) => {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) {
+        throw new Error('Usuário não autenticado');
+      }
+
       const { error } = await supabase
         .from('servicos')
         .insert({
           nome: data.nome,
           preco: data.preco,
           duracao: data.duracao,
+          user_id: authData.user.id,
         });
 
       if (error) {
