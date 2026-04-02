@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import { Minus, Plus, X } from 'lucide-react-native';
 import { FormaPagamento } from '../hooks/useVenda';
 import { getErrorMessage } from '../../../lib/utils';
@@ -55,6 +56,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({ visibl
   const { showAlert, showConfirm } = useAlert();
 
   const nomeServico = agendamento.servicos?.nome || agendamento.servico || 'Serviço não informado';
+  const horarioAtendimento = format(new Date(agendamento.data_hora), 'HH:mm');
   const valorServico = agendamento.servicos?.preco || agendamento.valor || 50;
   const valorProdutos = produtosSelecionados.reduce((sum, p) => sum + p.subtotal, 0);
   const valorTotal = valorServico + valorProdutos;
@@ -144,9 +146,33 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({ visibl
     return (data as { id: string } | null)?.id ?? null;
   };
 
+  const concluirFinalizacaoComSucesso = (formaPagamentoSelecionada: FormaPagamento) => {
+    setProdutosSelecionados([]);
+    setFormaPagamento('Dinheiro');
+    onClose();
+
+    setTimeout(() => {
+      showConfirm(
+        'Venda finalizada',
+        `Pagamento confirmado via ${formaPagamentoSelecionada}. O historico e o caixa ja foram atualizados.`,
+        [
+          {
+            text: 'Continuar'
+          }
+        ],
+        'success'
+      );
+    }, 150);
+  };
+
   const handleFinalizar = async () => {
+    if (finalizando) {
+      return;
+    }
+
     try {
       setFinalizando(true);
+      const formaPagamentoSelecionada = formaPagamento;
 
       for (const item of produtosSelecionados) {
         const produtoAtual = produtos.find((produto) => produto.id === item.produto_id);
@@ -191,19 +217,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({ visibl
         queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       ]);
 
-      setProdutosSelecionados([]);
-      setFormaPagamento('Dinheiro');
-      showConfirm(
-        'Venda finalizada',
-        `Pagamento confirmado via ${formaPagamento}. O historico e o caixa ja foram atualizados.`,
-        [
-          {
-            text: 'Continuar',
-            onPress: onClose
-          }
-        ],
-        'success'
-      );
+      concluirFinalizacaoComSucesso(formaPagamentoSelecionada);
     } catch (error) {
       showAlert('Não foi possível finalizar', getErrorMessage(error), 'error');
     } finally {
@@ -221,6 +235,7 @@ export const FinalizarVendaModal: React.FC<FinalizarVendaModalProps> = ({ visibl
             <View>
               <Text style={styles.title}>{agendamento.cliente_nome}</Text>
               <Text style={styles.subtitle}>{nomeServico}</Text>
+              <Text style={styles.scheduleText}>Horário: {horarioAtendimento}</Text>
             </View>
             <TouchableOpacity onPress={onClose} disabled={finalizando}>
               <X color={COLORS.white} size={24} />
@@ -381,6 +396,12 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: COLORS.zinc400
+  },
+  scheduleText: {
+    fontSize: 13,
+    color: COLORS.gold,
+    marginTop: 4,
+    fontWeight: '600'
   },
   content: {
     paddingHorizontal: 20

@@ -10,8 +10,8 @@ import {
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Search, Scissors, Clock, DollarSign } from 'lucide-react-native';
-import { COLORS } from '../../../../styles/colors';
-import { supabase } from '../../../../services/api/supabaseClient';
+import { COLORS } from '../../../styles/colors';
+import { supabase } from '../../../services/api/supabaseClient';
 import { NovoServicoModal } from '../components/NovoServicoModal';
 import { ServicoDetalhesModal } from '../components/ServicoDetalhesModal';
 
