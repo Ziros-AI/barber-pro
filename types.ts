@@ -110,6 +110,42 @@ export type Database = {
         }
         Relationships: []
       }
+      mensagem_templates: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          mensagem: string
+          nome: string
+          padrao: boolean
+          tipo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          mensagem: string
+          nome: string
+          padrao?: boolean
+          tipo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          mensagem?: string
+          nome?: string
+          padrao?: boolean
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lembretes: {
         Row: {
           cliente_nome: string

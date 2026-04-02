@@ -8,6 +8,7 @@ import { supabase } from '../../../services/api/supabaseClient';
 import { COLORS } from '../../../styles/colors';
 import { useAlert } from '../../../app/providers/AlertProvider';
 import { useAuth } from '../../../app/providers/AuthProvider';
+import { getTemplatePadraoPorTipo, normalizeTemplatesMensagem } from '../../../lib/messageTemplates';
 import type { Agendamento } from '../../../types';
 import { NovoAgendamentoModal } from '../components/NovoAgendamentoModal';
 import { AgendaConfigModal } from '../components/AgendaConfigModal';
@@ -28,7 +29,7 @@ const DEFAULT_LEMBRETE_TEMPLATE =
 
 const DEFAULT_CONFIG_INSERT = {
   nome_barbearia: 'Barbearia',
-  mensagem_lembrete_template: DEFAULT_LEMBRETE_TEMPLATE,
+  mensagem_lembrete_template: DEFAULT_LEMBRETE_TEMPLATE
 };
 
 const getMutationErrorMessage = (error: unknown) => {
@@ -267,9 +268,20 @@ export default function AgendaScreen() {
         horas_lembrete?: number | null;
       };
 
+      const { data: templatesRows, error: templatesError } = await supabase
+        .from('mensagem_templates')
+        .select('id, nome, tipo, mensagem, ativo, padrao')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      if (templatesError) {
+        console.error('Erro ao carregar templates de mensagem:', templatesError);
+      }
+
       const nomeBarbearia =
         String(row.nome_barbearia ?? '').trim() || DEFAULT_CONFIG_INSERT.nome_barbearia;
       const templateSalvo = String(row.mensagem_lembrete_template ?? '').trim();
+      const templatesMensagem = normalizeTemplatesMensagem(templatesRows || [], templateSalvo);
       const lembretesAtivosConfirm = parseLembretesAtivos(row.lembretes_ativos);
       const horasLembreteConfirm = Number(row.horas_lembrete) > 0 ? Number(row.horas_lembrete) : 24;
 
@@ -286,18 +298,19 @@ export default function AgendaScreen() {
 
       const textoConfirmacaoWhatsApp = `Fala ${agendamento.cliente_nome}! Confirmado seu ${servicoNome.toLowerCase()} às ${horaFormatada}! ✂️`;
 
+      const templateConfirmacao = getTemplatePadraoPorTipo(templatesMensagem, 'confirmacao', textoConfirmacaoWhatsApp);
+      const templateLembrete = getTemplatePadraoPorTipo(templatesMensagem, 'lembrete', templateSalvo || DEFAULT_LEMBRETE_TEMPLATE);
+
       let mensagemWhatsApp: string;
       let mensagemLembrete: string;
       let dataLembrete: Date;
 
       if (lembretesAtivosConfirm) {
-        const templateBase = templateSalvo || DEFAULT_LEMBRETE_TEMPLATE;
-        const preenchido = applyReminderTemplate(templateBase, vars);
-        mensagemWhatsApp = preenchido;
-        mensagemLembrete = preenchido;
+        mensagemWhatsApp = applyReminderTemplate(templateConfirmacao, vars);
+        mensagemLembrete = applyReminderTemplate(templateLembrete, vars);
         dataLembrete = new Date(dataAgendamento.getTime() - horasLembreteConfirm * 60 * 60 * 1000);
       } else {
-        mensagemWhatsApp = textoConfirmacaoWhatsApp;
+        mensagemWhatsApp = applyReminderTemplate(templateConfirmacao, vars);
         mensagemLembrete = `Confirmação de agendamento para ${format(dataAgendamento, 'dd/MM/yyyy HH:mm')}`;
         dataLembrete = addDays(dataAgendamento, -1);
       }
