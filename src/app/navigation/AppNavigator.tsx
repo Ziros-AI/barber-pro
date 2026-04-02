@@ -16,7 +16,7 @@ import LembretesScreen from '../../features/lembretes/screens/LembretesScreen';
 import LoginScreen from '../../features/auth/screens/LoginScreen';
 import ConfiguracoesScreen from '../../features/configuracoes/screens/ConfiguracoesScreen';
 import ProdutosScreen from '../../features/produtos/screens/ProdutosScreen';
-import { ServicosScreen } from '../../features/servicos/screens';
+import { ServicosScreen } from '../../features/servicos';
 import { COLORS } from '../../styles/colors';
 import { fetchAgendaConfigByUserId } from '../../features/agenda/hooks/useAgendaConfig';
 

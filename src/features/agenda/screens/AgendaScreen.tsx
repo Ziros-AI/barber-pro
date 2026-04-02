@@ -242,6 +242,13 @@ export default function AgendaScreen() {
         return;
       }
 
+      if (agendamento.status === 'concluido') {
+        showAlert('Atendimento finalizado', 'Esse agendamento já foi finalizado no caixa e não pode mais ser confirmado.', 'warning');
+        queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+        queryClient.invalidateQueries({ queryKey: ['agendamentos-hoje-confirmados'] });
+        return;
+      }
+
       const { data: configRows, error: configError } = await supabase
         .from('configuracoes')
         .select('nome_barbearia, mensagem_lembrete_template, lembretes_ativos, horas_lembrete')
@@ -303,13 +310,27 @@ export default function AgendaScreen() {
       }
 
       // ✅ atualiza agendamento
-      await supabase
+      const { data: agendamentoAtualizado, error: updateAgendamentoError } = await supabase
         .from('agendamentos')
         .update({
           confirmado_whatsapp: true,
           status: 'confirmado'
         })
-        .eq('id', agendamento.id);
+        .eq('id', agendamento.id)
+        .in('status', ['pendente', 'confirmado'])
+        .select('id')
+        .maybeSingle();
+
+      if (updateAgendamentoError) {
+        throw updateAgendamentoError;
+      }
+
+      if (!agendamentoAtualizado) {
+        showAlert('Atendimento indisponivel', 'Esse agendamento nao pode mais ser confirmado porque ja foi concluido ou removido.', 'warning');
+        queryClient.invalidateQueries({ queryKey: ['agendamentos'] });
+        queryClient.invalidateQueries({ queryKey: ['agendamentos-hoje-confirmados'] });
+        return;
+      }
 
       // (opcional, mas bom) remove lembrete antigo
       await supabase
@@ -500,7 +521,10 @@ export default function AgendaScreen() {
       endTime?: string;
       slotEmConflito?: boolean;
     }
-  ) => (
+  ) => {
+    const deveMostrarConfirmacaoWhatsApp = !agendamento.confirmado_whatsapp && agendamento.status !== 'concluido';
+
+    return (
     <TouchableOpacity
       key={agendamento.id}
       style={[
@@ -530,27 +554,32 @@ export default function AgendaScreen() {
         </View>
       </View>
 
-      <Text style={styles.intervaloText}>
-        {options?.horaExibida || format(parseISO(agendamento.data_hora), 'HH:mm')}
-        {options?.endTime ? ` - ${options.endTime}` : ''}
-      </Text>
+        <Text style={styles.intervaloText}>
+          {options?.horaExibida || format(parseISO(agendamento.data_hora), 'HH:mm')}
+          {options?.endTime ? ` - ${options.endTime}` : ''}
+        </Text>
 
-      <View style={styles.cardActions}>
-        <View style={styles.primaryActionContainer}>
-          {!agendamento.confirmado_whatsapp && (
+      <View style={[styles.cardActions, !deveMostrarConfirmacaoWhatsApp ? styles.cardActionsSingle : null]}>
+        {deveMostrarConfirmacaoWhatsApp ? (
+          <View style={styles.primaryActionContainer}>
             <TouchableOpacity onPress={() => confirmarWhatsApp(agendamento)} style={styles.whatsappButton}>
               <MessageCircle color="#fff" size={18} style={styles.whatsappIcon} />
               <Text style={styles.whatsappButtonText}>Confirmar WhatsApp</Text>
             </TouchableOpacity>
-          )}
-        </View>
+          </View>
+        ) : null}
 
-        <TouchableOpacity onPress={() => handleExcluirAgendamento(agendamento)} style={styles.deleteButton}>
-          <Trash2 color="#fff" size={18} />
+        <TouchableOpacity
+          onPress={() => handleExcluirAgendamento(agendamento)}
+          style={[styles.deleteButton, !deveMostrarConfirmacaoWhatsApp ? styles.deleteButtonSingle : null]}
+        >
+          <Trash2 color="#fff" size={16} />
+          <Text style={styles.deleteButtonText}>Excluir</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
 
   if (queryConfiguracoes.isLoading) {
     return (
@@ -889,6 +918,8 @@ const styles = StyleSheet.create({
     padding: 16,
     borderLeftWidth: 4,
     borderLeftColor: COLORS.gold,
+    borderWidth: 1,
+    borderColor: COLORS.zinc800,
   },
   agendamentoCardConflito: {
     borderLeftColor: COLORS.red,
@@ -905,18 +936,25 @@ const styles = StyleSheet.create({
   },
   cardActions: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'space-between',
     gap: 8,
-    marginTop: 4,
+    marginTop: 'auto',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.zinc800,
+  },
+  cardActionsSingle: {
+    justifyContent: 'flex-end',
   },
   primaryActionContainer: {
     flex: 1,
+    justifyContent: 'center',
   },
   agendamentoHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
   agendamentoInfo: {
@@ -939,16 +977,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   intervaloText: {
-    marginBottom: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
     color: COLORS.zinc300,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
   horaTag: {
     backgroundColor: COLORS.gold,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
+    marginLeft: 12,
   },
   horaText: {
     color: COLORS.background,
@@ -960,8 +1004,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     flex: 1,
   },
@@ -974,13 +1018,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   deleteButton: {
-    height: 44,
-    width: 44,
-    borderRadius: 8,
-    backgroundColor: COLORS.red,
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
     marginLeft: 'auto',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  deleteButtonSingle: {
+    marginLeft: 0,
+    minWidth: 132,
+    alignSelf: 'flex-end',
+    justifyContent: 'center',
+  },
+  deleteButtonText: {
+    color: COLORS.white,
+    fontWeight: '700',
+    fontSize: 13,
   },
   disponivelCard: {
     backgroundColor: COLORS.cardBg,
