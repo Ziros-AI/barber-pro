@@ -13,9 +13,9 @@ import {
   ScrollView
 } from 'react-native';
 import { X, Trash2 } from 'lucide-react-native';
-import { COLORS } from '../../../../styles/colors';
-import { useAlert } from '../../../../app/providers/AlertProvider';
-import { useCreateServico, useDeleteServico, useUpdateServico } from '../hooks/useServicos';
+import { COLORS } from '../../../styles/colors';
+import { useAlert } from '../../../app/providers/AlertProvider';
+import { useDeleteServico, useUpdateServico } from '../hooks/useServicos';
 
 interface ServicoData {
   id: string;
@@ -39,7 +39,7 @@ export const ServicoDetalhesModal: React.FC<ServicoDetalhesModalProps> = ({
   const [preco, setPreco] = useState('');
   const [duracao, setDuracao] = useState('');
 
-  const { showAlert, showConfirm } = useAlert();
+  const { showAlert } = useAlert();
 
   const { mutate: atualizarServico, isPending: isUpdating } = useUpdateServico();
   const { mutate: excluirServico, isPending: isDeleting } = useDeleteServico();

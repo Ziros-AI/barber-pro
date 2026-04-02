@@ -2,18 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, StyleSheet, Switch } from 'react-native';
 import { supabase } from '../../../services/api/supabaseClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save, Scissors } from 'lucide-react-native';
+import { Settings, Save } from 'lucide-react-native';
 import { COLORS } from '../../../styles/colors';
 import { useAlert } from '../../../app/providers/AlertProvider';
-import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../../app/providers/AuthProvider';
 
 interface Configuracao {
   id?: string;
   nome_barbearia: string;
-  valor_corte?: number;
-  valor_barba?: number;
-  valor_corte_barba?: number;
   horas_lembrete: number;
   mensagem_lembrete_template: string;
   lembretes_ativos: boolean;
@@ -21,9 +17,6 @@ interface Configuracao {
 
 const DEFAULT_CONFIG: Configuracao = {
   nome_barbearia: 'Barbearia',
-  valor_corte: 50,
-  valor_barba: 40,
-  valor_corte_barba: 80,
   horas_lembrete: 24,
   mensagem_lembrete_template:
     'Olá {nome}, lembrete do seu {servico} amanhã às {hora}. Te esperamos! - {barbearia}',
@@ -33,7 +26,6 @@ const DEFAULT_CONFIG: Configuracao = {
 export default function ConfiguracoesScreen() {
   const queryClient = useQueryClient();
   const { showAlert } = useAlert();
-  const navigation = useNavigation();
   const { user } = useAuth();
 
   const { data: configs = [], isLoading } = useQuery({
@@ -49,7 +41,7 @@ export default function ConfiguracoesScreen() {
 
       if (error) throw error;
       return data || [];
-    },
+    }
   });
 
   const [novaConfig, setNovaConfig] = useState<Configuracao>(DEFAULT_CONFIG);
@@ -60,10 +52,7 @@ export default function ConfiguracoesScreen() {
         nome_barbearia: configs[0].nome_barbearia || '',
         mensagem_lembrete_template: configs[0].mensagem_lembrete_template || '',
         horas_lembrete: (configs[0] as any).horas_lembrete ?? 24,
-        lembretes_ativos: (configs[0] as any).lembretes_ativos ?? true,
-        valor_corte: (configs[0] as any).valor_corte ?? 50,
-        valor_barba: (configs[0] as any).valor_barba ?? 40,
-        valor_corte_barba: (configs[0] as any).valor_corte_barba ?? 80,
+        lembretes_ativos: (configs[0] as any).lembretes_ativos ?? true
       });
       return;
     }
@@ -80,7 +69,7 @@ export default function ConfiguracoesScreen() {
       const { id: _omitId, ...campos } = data;
       const payload = {
         ...campos,
-        user_id: user.id,
+        user_id: user.id
       };
 
       const { data: existingConfigs, error: existingConfigError } = await supabase
@@ -120,13 +109,8 @@ export default function ConfiguracoesScreen() {
     },
     onError: (error) => {
       console.log('ERRO COMPLETO:', error);
-
-      showAlert(
-        'Erro',
-        JSON.stringify(error),
-        'error'
-      );
-    },
+      showAlert('Erro', JSON.stringify(error), 'error');
+    }
   });
 
   if (isLoading) {
@@ -143,25 +127,6 @@ export default function ConfiguracoesScreen() {
         <Settings color={COLORS.gold} size={32} />
         <Text style={styles.title}>Configurações</Text>
         <Text style={styles.subtitle}>Personalize sua barbearia</Text>
-      </View>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Gerenciamento</Text>
-
-        <TouchableOpacity
-          style={{
-            backgroundColor: COLORS.cardBg,
-            borderRadius: 12,
-            padding: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: COLORS.zinc700,
-          }}
-          onPress={() => navigation.navigate('Servicos' as never)}
-        >
-          <Scissors color={COLORS.gold} size={20} />
-          <Text style={{ color: COLORS.white, marginLeft: 12, fontSize: 16 }}>Serviços</Text>
-        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
@@ -181,64 +146,12 @@ export default function ConfiguracoesScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Valores e Preços</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Valor Padrão do Corte (R$)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="50.00"
-              placeholderTextColor={COLORS.zinc600}
-              value={String(novaConfig.valor_corte || 50)}
-              onChangeText={(text) => {
-                const valor = parseFloat(text.replace(',', '.')) || 0;
-                setNovaConfig({ ...novaConfig, valor_corte: valor });
-              }}
-              keyboardType="decimal-pad"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Valor Padrão da Barba (R$)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="40.00"
-              placeholderTextColor={COLORS.zinc600}
-              value={String(novaConfig.valor_barba || 40)}
-              onChangeText={(text) => {
-                const valor = parseFloat(text.replace(',', '.')) || 0;
-                setNovaConfig({ ...novaConfig, valor_barba: valor });
-              }}
-              keyboardType="decimal-pad"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Valor Padrão Corte + Barba (R$)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="80.00"
-              placeholderTextColor={COLORS.zinc600}
-              value={String(novaConfig.valor_corte_barba || 80)}
-              onChangeText={(text) => {
-                const valor = parseFloat(text.replace(',', '.')) || 0;
-                setNovaConfig({ ...novaConfig, valor_corte_barba: valor });
-              }}
-              keyboardType="decimal-pad"
-            />
-            <Text style={styles.hint}>Estes valores serão usados ao criar novos agendamentos</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Lembretes Automáticos</Text>
 
           <View style={styles.switchRow}>
             <View style={styles.switchInfo}>
               <Text style={styles.switchLabel}>Ativar Lembretes</Text>
-              <Text style={styles.switchDescription}>
-                Criar lembretes automaticamente ao confirmar agendamento
-              </Text>
+              <Text style={styles.switchDescription}>Criar lembretes automaticamente ao confirmar agendamento</Text>
             </View>
             <Switch
               value={novaConfig.lembretes_ativos}
@@ -273,9 +186,7 @@ export default function ConfiguracoesScreen() {
               numberOfLines={5}
               textAlignVertical="top"
             />
-            <Text style={styles.hint}>
-              Use: {'{nome}'}, {'{servico}'}, {'{hora}'}, {'{barbearia}'}
-            </Text>
+            <Text style={styles.hint}>Use: {'{nome}'}, {'{servico}'}, {'{hora}'}, {'{barbearia}'}</Text>
           </View>
         </View>
 
@@ -314,55 +225,55 @@ export default function ConfiguracoesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.background
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.background
   },
   header: {
     backgroundColor: COLORS.cardBg,
     paddingTop: 48,
     paddingBottom: 32,
     paddingHorizontal: 16,
-    alignItems: 'center',
+    alignItems: 'center'
   },
   title: {
     fontSize: 32,
     fontWeight: '900',
     color: COLORS.white,
     marginTop: 12,
-    marginBottom: 4,
+    marginBottom: 4
   },
   subtitle: {
     fontSize: 14,
-    color: COLORS.zinc400,
+    color: COLORS.zinc400
   },
   content: {
-    padding: 16,
+    padding: 16
   },
   section: {
     backgroundColor: COLORS.cardBg,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 16
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.white,
-    marginBottom: 16,
+    marginBottom: 16
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 16
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.zinc400,
-    marginBottom: 8,
+    marginBottom: 8
   },
   input: {
     backgroundColor: COLORS.background,
@@ -371,37 +282,37 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
-    color: COLORS.white,
+    color: COLORS.white
   },
   textArea: {
     minHeight: 120,
-    paddingTop: 12,
+    paddingTop: 12
   },
   hint: {
     fontSize: 12,
     color: COLORS.zinc500,
-    marginTop: 6,
+    marginTop: 6
   },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
-    paddingVertical: 8,
+    paddingVertical: 8
   },
   switchInfo: {
     flex: 1,
-    marginRight: 16,
+    marginRight: 16
   },
   switchLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.white,
-    marginBottom: 4,
+    marginBottom: 4
   },
   switchDescription: {
     fontSize: 12,
-    color: COLORS.zinc500,
+    color: COLORS.zinc500
   },
   saveButton: {
     backgroundColor: COLORS.gold,
@@ -411,30 +322,30 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 16
   },
   saveButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: COLORS.background,
+    color: COLORS.background
   },
   infoCard: {
     backgroundColor: `${COLORS.blue}20`,
     borderLeftWidth: 4,
     borderLeftColor: COLORS.blue,
     borderRadius: 12,
-    padding: 16,
+    padding: 16
   },
   infoTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.white,
-    marginBottom: 12,
+    marginBottom: 12
   },
   infoText: {
     fontSize: 14,
     color: COLORS.zinc400,
     marginBottom: 8,
-    lineHeight: 20,
-  },
+    lineHeight: 20
+  }
 });

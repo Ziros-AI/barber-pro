@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../../../../services/api/supabaseClient'; 
+import { supabase } from '../../../services/api/supabaseClient'; 
 
 interface CreateServicoDTO {
   nome: string;

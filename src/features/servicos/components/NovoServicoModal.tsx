@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { X } from 'lucide-react-native';
-import { COLORS } from '../../../../styles/colors';
+import { COLORS } from '../../../styles/colors';
 import { useCreateServico } from '../hooks/useServicos';
 
 interface NovoServicoModalProps {
