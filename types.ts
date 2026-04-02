@@ -82,6 +82,9 @@ export type Database = {
           lembretes_ativos: boolean | null
           mensagem_lembrete_template: string
           nome_barbearia: string
+          valor_barba: number | null
+          valor_corte: number | null
+          valor_corte_barba: number | null
         }
         Insert: {
           created_at?: string
@@ -90,6 +93,9 @@ export type Database = {
           lembretes_ativos?: boolean | null
           mensagem_lembrete_template: string
           nome_barbearia: string
+          valor_barba?: number | null
+          valor_corte?: number | null
+          valor_corte_barba?: number | null
         }
         Update: {
           created_at?: string
@@ -98,6 +104,9 @@ export type Database = {
           lembretes_ativos?: boolean | null
           mensagem_lembrete_template?: string
           nome_barbearia?: string
+          valor_barba?: number | null
+          valor_corte?: number | null
+          valor_corte_barba?: number | null
         }
         Relationships: []
       }
