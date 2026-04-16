@@ -1,0 +1,8 @@
+# BarberPro — Supabase CLI
+# https://supabase.com/docs/guides/cli/config
+
+[api]
+enabled = true
+
+[functions.public-booking]
+verify_jwt = false
